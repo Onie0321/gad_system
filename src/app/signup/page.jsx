@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,23 @@ import { UserPlus, Mail, Lock, User, Github, Twitter } from "lucide-react";
 
 export default function Component() {
   const [agreed, setAgreed] = useState(false);
+  const [checkboxEnabled, setCheckboxEnabled] = useState(false);
+
+  useEffect(() => {
+    // Check if the terms and conditions have been accepted
+    const termsAccepted = localStorage.getItem("termsAccepted");
+    if (termsAccepted === "true") {
+      setAgreed(true);
+      setCheckboxEnabled(true); // Enable checkbox if terms are accepted
+    } else {
+      setAgreed(false);
+      setCheckboxEnabled(false); // Disable checkbox if terms are not accepted
+    }
+  }, []);
+
+  const handleCheckboxChange = (checked) => {
+    setAgreed(checked);
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-900 text-gray-100 md:flex-row">
@@ -106,7 +123,8 @@ export default function Component() {
               <Checkbox
                 id="agree-terms"
                 checked={agreed}
-                onCheckedChange={setAgreed}
+                onCheckedChange={handleCheckboxChange}
+                disabled={!checkboxEnabled}
                 className="text-blue-500 focus:ring-blue-500"
               />
               <Label
@@ -115,7 +133,7 @@ export default function Component() {
               >
                 I agree to the{" "}
                 <Link
-                  href="#"
+                  href="/signup/termsandconditions"
                   className="text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   Terms and Conditions

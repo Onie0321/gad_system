@@ -42,7 +42,7 @@ export default function Component() {
 
           <Button
             as={Link}
-            href="/src/app/signup"
+            href="/signup"
             variant="outline"
             className="w-full max-w-xs bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-300"
           >
