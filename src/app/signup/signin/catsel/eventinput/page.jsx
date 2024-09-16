@@ -31,8 +31,8 @@ import { PlusCircle, ChevronRight, Edit, Trash2 } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { v4 as uuidv4 } from "uuid"; // For unique IDs
 
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/NavBar";
+import Sidebar from "@/components/SideBar";
 import EditDialog from "@/components/EditDialog";
 import DeleteDialog from "@/components/DeleteDialog";
 import Toast from "@/components/ui/toast"; // Assuming you have a Toast component
