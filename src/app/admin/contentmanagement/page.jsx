@@ -1,14 +1,14 @@
 import React from "react";
 import { Edit, Search, Plus, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "../../../components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+} from "../../../components/ui/card";
+import { Input } from "../../../components/ui/input";
 
 export default function ContentManagement() {
   return (

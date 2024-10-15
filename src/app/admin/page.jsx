@@ -11,7 +11,7 @@ import {
   Menu,
   Atom,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "../../components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,15 +19,25 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
+} from "../../components/ui/dropdown-menu";
+import { Switch } from "../../components/ui/switch";
 import UserManagement from "./usermanagement/page";
 import ReportsAnalytics from "./report&analytics/page";
 import SystemSettings from "./settings/page";
 import ContentManagement from "./contentmanagement/page";
 import LogOutComponent from "./logout/page";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // import Tabs related components
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"; // import Card component
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs"; // import Tabs related components
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  CardTitle,
+} from "../../components/ui/card"; // import Card component
 
 const nav = [
   { icon: Layout, title: "Dashboard", id: "dashboard" },

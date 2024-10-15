@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Menu,
@@ -12,22 +12,51 @@ import {
   Mail,
   Phone,
   MapPin,
+  Eye,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { Card, CardContent } from "../components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
 
 export default function ScrollableLandingPage() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
+  const [activeSection, setActiveSection] = useState("home");
   const [currentColorIndex, setCurrentColorIndex] = useState(0);
+  const sectionRefs = useRef({});
 
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + window.innerHeight / 2;
+
+      Object.entries(sectionRefs.current).forEach(([key, ref]) => {
+        if (
+          ref &&
+          ref.offsetTop <= scrollPosition &&
+          ref.offsetTop + ref.offsetHeight > scrollPosition
+        ) {
+          setActiveSection(key);
+        }
+      });
+    };
+
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -37,7 +66,7 @@ export default function ScrollableLandingPage() {
       setCurrentColorIndex(
         (prevIndex) => (prevIndex + 1) % gradientColors.length
       );
-    }, 5000); // Change color every 5 seconds
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -50,31 +79,42 @@ export default function ScrollableLandingPage() {
 
   const currentGradient = gradientColors[currentColorIndex];
 
+  const scrollToSection = (sectionId) => {
+    const section = sectionRefs.current[sectionId];
+    if (section) {
+      section.scrollIntoView({ behavior: "smooth" });
+    }
+    setIsMenuOpen(false);
+  };
+
   return (
     <div
       className={`min-h-screen flex flex-col bg-gradient-to-r ${currentGradient} transition-colors duration-1000`}
     >
-      <header
-        className="sticky top-0 z-50 bg-white bg-opacity-10 backdrop-blur-md shadow-md transition-all duration-300"
-        style={{ padding: `${scrollY > 50 ? "0.5rem" : "1rem"} 0` }}
-      >
-        <div className="container mx-auto px-4 flex justify-between items-center">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white bg-opacity-10 backdrop-blur-md shadow-md">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full"></div>
+            <img src="/logo/gad.png" alt="Logo" className="w-8 h-8" />
             <span className="text-2xl font-bold text-white drop-shadow-md">
               G&D Initiative
             </span>
           </Link>
           <nav className="hidden md:flex space-x-4">
-            {["Home", "About", "Services", "News", "Contact"].map((item) => (
-              <Link
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                className="text-white hover:text-purple-200 transition duration-300 drop-shadow"
-              >
-                {item}
-              </Link>
-            ))}
+            {["Home", "About", "Archive", "Services", "News", "Contact"].map(
+              (item) => (
+                <button
+                  key={item}
+                  onClick={() => scrollToSection(item.toLowerCase())}
+                  className={`text-white hover:text-purple-200 transition duration-300 drop-shadow ${
+                    activeSection === item.toLowerCase()
+                      ? "border-b-2 border-white"
+                      : ""
+                  }`}
+                >
+                  {item}
+                </button>
+              )
+            )}
           </nav>
           <Button
             variant="ghost"
@@ -84,35 +124,40 @@ export default function ScrollableLandingPage() {
             {isMenuOpen ? <X /> : <Menu />}
           </Button>
         </div>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="md:hidden bg-white bg-opacity-10 backdrop-blur-md"
-          >
-            {["Home", "About", "Services", "News", "Contact"].map((item) => (
-              <Link
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                className="block py-2 px-4 text-white hover:bg-white hover:bg-opacity-20 transition duration-300"
-              >
-                {item}
-              </Link>
-            ))}
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="md:hidden bg-white bg-opacity-10 backdrop-blur-md"
+            >
+              {["Home", "About", "Archive", "Services", "News", "Contact"].map(
+                (item) => (
+                  <button
+                    key={item}
+                    onClick={() => scrollToSection(item.toLowerCase())}
+                    className="block w-full py-2 px-4 text-white hover:bg-white hover:bg-opacity-20 transition duration-300"
+                  >
+                    {item}
+                  </button>
+                )
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
-      <main className="flex-grow">
+      <main className="flex-grow pt-16">
         {/* Hero Section */}
         <section
           id="home"
+          ref={(el) => (sectionRefs.current.home = el)}
           className="min-h-screen flex items-center justify-center text-center px-4"
         >
           <div className="max-w-4xl mx-auto">
             <motion.h1
-              className="text-5xl md:text-7xl font-bold mb-6 text-white drop-shadow-lg"
+              className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6 text-white drop-shadow-lg"
               initial={{ y: -50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.5 }}
@@ -120,7 +165,7 @@ export default function ScrollableLandingPage() {
               Empowering Equality, Fostering Development
             </motion.h1>
             <motion.p
-              className="text-xl md:text-2xl mb-8 text-white drop-shadow-md"
+              className="text-lg sm:text-xl md:text-2xl mb-8 text-white drop-shadow-md"
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
@@ -135,19 +180,27 @@ export default function ScrollableLandingPage() {
             >
               <Button
                 variant="outline"
-                onClick={() => router.push("/signup")}
-                className="w-1/1 bg-white text-purple-600 hover:bg-purple-100 transition duration-300"
+                onClick={() => router.push("/signin")}
+                className="w-full sm:w-auto bg-white text-purple-600 hover:bg-purple-100 transition duration-300"
               >
                 Start
               </Button>
             </motion.div>
           </div>
+          <Button
+            variant="ghost"
+            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white"
+            onClick={() => scrollToSection("about")}
+          >
+            <ChevronDown size={24} />
+          </Button>
         </section>
 
         {/* About Section */}
         <section
           id="about"
-          className="py-20 bg-gradient-to-r from-purple-500 to-pink-500"
+          ref={(el) => (sectionRefs.current.about = el)}
+          className="min-h-screen flex items-center py-20 bg-gradient-to-r from-purple-500 to-pink-500"
         >
           <div className="container mx-auto px-4">
             <motion.h2
@@ -216,10 +269,197 @@ export default function ScrollableLandingPage() {
           </div>
         </section>
 
+        {/* Archive Section */}
+        <section
+          id="archive"
+          ref={(el) => (sectionRefs.current.archive = el)}
+          className="min-h-screen flex items-center py-20 bg-gradient-to-r from-green-500 to-teal-500"
+        >
+          <div className="container mx-auto px-4">
+            <motion.h2
+              className="text-3xl font-bold mb-8 text-center text-white drop-shadow-lg"
+              initial={{ y: 50, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+            >
+              Archive
+            </motion.h2>
+            <Tabs defaultValue="guidelines" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-white bg-opacity-20 rounded-t-lg overflow-hidden">
+                <TabsTrigger
+                  value="guidelines"
+                  className="text-white data-[state=active]:bg-white data-[state=active]:text-green-600"
+                >
+                  Guidelines
+                </TabsTrigger>
+                <TabsTrigger
+                  value="competitions"
+                  className="text-white data-[state=active]:bg-white data-[state=active]:text-green-600"
+                >
+                  Competitions
+                </TabsTrigger>
+                <TabsTrigger
+                  value="materials"
+                  className="text-white data-[state=active]:bg-white data-[state=active]:text-green-600"
+                >
+                  Other Materials
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="guidelines" className="mt-4">
+                <Card className="bg-white bg-opacity-10 backdrop-blur-md overflow-hidden">
+                  <div className="p-1 bg-gradient-to-r from-yellow-300 via-red-300 to-pink-300">
+                    <CardContent className="p-6 bg-green-500 bg-opacity-90">
+                      <h3 className="text-xl font-semibold mb-4 text-white">
+                        Harmonized Gender and Development Guidelines
+                      </h3>
+                      <p className="text-white mb-4">
+                        The HGDG is a tool to integrate gender concerns in
+                        development programs and projects.
+                      </p>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="text-white border-white hover:bg-white hover:text-green-600"
+                          >
+                            <Eye className="mr-2 h-4 w-4" /> View HGDG
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl">
+                          <DialogHeader>
+                            <DialogTitle>
+                              Harmonized Gender and Development Guidelines
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="mt-4">
+                            <iframe
+                              src="/placeholder.pdf"
+                              className="w-full h-[70vh]"
+                              title="HGDG Document"
+                            ></iframe>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </CardContent>
+                  </div>
+                </Card>
+              </TabsContent>
+              <TabsContent value="competitions" className="mt-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  {[
+                    {
+                      title: "Essay Writing Contest 2023",
+                      description:
+                        "Winning piece on gender equality in education",
+                    },
+                    {
+                      title: "Photo Contest 2022",
+                      description: "Capturing moments of empowerment",
+                    },
+                  ].map((item, index) => (
+                    <Card
+                      key={index}
+                      className="bg-white bg-opacity-10 backdrop-blur-md overflow-hidden"
+                    >
+                      <div className="p-1 bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300">
+                        <CardContent className="p-6 bg-green-500 bg-opacity-90">
+                          <h3 className="text-lg font-semibold mb-2 text-white">
+                            {item.title}
+                          </h3>
+                          <p className="text-white mb-4">{item.description}</p>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="text-white border-white hover:bg-white hover:text-green-600"
+                              >
+                                <Eye className="mr-2 h-4 w-4" /> View Entry
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl">
+                              <DialogHeader>
+                                <DialogTitle>{item.title}</DialogTitle>
+                              </DialogHeader>
+                              <div className="mt-4">
+                                <iframe
+                                  src="/placeholder.pdf"
+                                  className="w-full h-[70vh]"
+                                  title={item.title}
+                                ></iframe>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </CardContent>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+              <TabsContent value="materials" className="mt-4">
+                <div className="grid md:grid-cols-3 gap-4">
+                  {[
+                    {
+                      title: "Gender Mainstreaming Toolkit",
+                      description: "A comprehensive guide for organizations",
+                    },
+                    {
+                      title: "Annual Report 2023",
+                      description: "Our impact and achievements",
+                    },
+                    {
+                      title: "Policy Brief: Women in STEM",
+                      description:
+                        "Addressing gender gaps in science and technology",
+                    },
+                  ].map((item, index) => (
+                    <Card
+                      key={index}
+                      className="bg-white bg-opacity-10 backdrop-blur-md overflow-hidden"
+                    >
+                      <div className="p-1 bg-gradient-to-r from-green-300 via-yellow-300 to-red-300">
+                        <CardContent className="p-6 bg-green-500 bg-opacity-90">
+                          <h3 className="text-lg font-semibold mb-2 text-white">
+                            {item.title}
+                          </h3>
+                          <p className="text-white mb-4">{item.description}</p>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="text-white border-white hover:bg-white hover:text-green-600"
+                              >
+                                <Eye className="mr-2 h-4 w-4" /> View Document
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl">
+                              <DialogHeader>
+                                <DialogTitle>{item.title}</DialogTitle>
+                              </DialogHeader>
+                              <div className="mt-4">
+                                <iframe
+                                  src="/placeholder.pdf"
+                                  className="w-full h-[70vh]"
+                                  title={item.title}
+                                ></iframe>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </CardContent>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </section>
+
         {/* Services Section */}
         <section
           id="services"
-          className="py-20 bg-gradient-to-r from-indigo-500 to-purple-500"
+          ref={(el) => (sectionRefs.current.services = el)}
+          className="min-h-screen flex items-center py-20 bg-gradient-to-r from-indigo-500 to-purple-500"
         >
           <div className="container mx-auto px-4">
             <motion.h2
@@ -273,7 +513,8 @@ export default function ScrollableLandingPage() {
         {/* News Section */}
         <section
           id="news"
-          className="py-20 bg-gradient-to-r from-pink-500 to-red-500"
+          ref={(el) => (sectionRefs.current.news = el)}
+          className="min-h-screen flex items-center py-20 bg-gradient-to-r from-pink-500 to-red-500"
         >
           <div className="container mx-auto px-4">
             <motion.h2
@@ -333,7 +574,8 @@ export default function ScrollableLandingPage() {
         {/* Contact Section */}
         <section
           id="contact"
-          className="py-20 bg-gradient-to-r from-yellow-500 to-orange-500"
+          ref={(el) => (sectionRefs.current.contact = el)}
+          className="min-h-screen flex items-center py-20 bg-gradient-to-r from-yellow-500 to-orange-500"
         >
           <div className="container mx-auto px-4">
             <motion.h2
@@ -386,14 +628,14 @@ export default function ScrollableLandingPage() {
               >
                 <div className="space-y-4 text-white">
                   <p className="flex items-center">
-                    <Mail className="mr-2" /> info@genderdevelopment.org
+                    <Mail className="mr-2" />
+                    gad@ascot.edu.ph
                   </p>
                   <p className="flex items-center">
                     <Phone className="mr-2" /> +1 (555) 123-4567
                   </p>
                   <p className="flex items-center">
-                    <MapPin className="mr-2" /> 123 Equality Street, Progress
-                    City, 12345
+                    <MapPin className="mr-2" /> Brgy. Zabali, Baler, Aurora
                   </p>
                 </div>
                 <div className="mt-8">
@@ -402,7 +644,10 @@ export default function ScrollableLandingPage() {
                   </h3>
                   <div className="flex space-x-4">
                     {[
-                      { Icon: Facebook, href: "#" },
+                      {
+                        Icon: Facebook,
+                        href: "https://web.facebook.com/ascotgad",
+                      },
                       { Icon: Twitter, href: "#" },
                       { Icon: Instagram, href: "#" },
                       { Icon: Youtube, href: "#" },
@@ -432,7 +677,7 @@ export default function ScrollableLandingPage() {
             </p>
             <div className="flex space-x-4">
               {[
-                { Icon: Facebook, href: "#" },
+                { Icon: Facebook, href: "https://web.facebook.com/ascotgad" },
                 { Icon: Twitter, href: "#" },
                 { Icon: Instagram, href: "#" },
                 { Icon: Youtube, href: "#" },

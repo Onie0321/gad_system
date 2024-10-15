@@ -1,18 +1,17 @@
 "use client";
-
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { Checkbox } from "../../../components/ui/checkbox";
+import { Progress } from "../../../components/ui/progress";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "../../../components/ui/dialog";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -27,6 +26,8 @@ import {
 } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { FaDiscord } from "react-icons/fa";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const calculatePasswordStrength = (password) => {
   const lengthScore = Math.min(password.length * 5, 25);
@@ -48,23 +49,26 @@ export default function SignUpPage() {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [useOTP, setUseOTP] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
+  const [adminCode, setAdminCode] = useState("");
+  const [showAdminCodeField, setShowAdminCodeField] = useState(false);
 
   useEffect(() => {
     setPasswordStrength(calculatePasswordStrength(password));
   }, [password]);
 
   const validateEmail = (email) => {
-    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    // Check if email ends with @ascot.edu.ph
+    const re = /^[a-zA-Z0-9._%+-]+@ascot\.edu\.ph$/;
     return re.test(String(email).toLowerCase());
   };
 
   const handleEmailChange = (e) => {
-    setEmail(e.target.value);
-    if (!validateEmail(e.target.value)) {
-      setEmailError("Please enter a valid email address");
+    const emailValue = e.target.value;
+    setEmail(emailValue);
+    if (!validateEmail(emailValue)) {
+      setEmailError(
+        "Please enter a valid email address ending with @ascot.edu.ph"
+      );
     } else {
       setEmailError("");
     }
@@ -72,24 +76,82 @@ export default function SignUpPage() {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    if (validateEmail(email) && password && agreeToTerms) {
-      setIsLoading(true);
-      try {
-        // Simulating an API call
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        setShowSuccessModal(true);
-      } catch (error) {
-        console.error("Sign up error:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
 
-  const handleOTPRequest = () => {
-    setUseOTP(true);
-    setOtpSent(true);
-    // Implement OTP sending logic here
+    // Check if all fields are filled
+    if (!name || !email || !password) {
+      toast.error("All fields are required.");
+      return;
+    }
+
+    // Validate email format
+    if (!validateEmail(email)) {
+      toast.error(
+        "Please enter a valid ASCOT email address ending in @ascot.edu.ph."
+      );
+      return;
+    }
+
+    // Ensure password meets certain criteria (length, character complexity)
+    if (
+      password.length < 8 ||
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/[0-9]/.test(password)
+    ) {
+      toast.error(
+        "Password must be at least 8 characters long and contain uppercase, lowercase, and numbers."
+      );
+      return;
+    }
+
+    // Ensure user agrees to terms and conditions
+    if (!agreeToTerms) {
+      toast.error("You must agree to the terms and conditions.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          adminCode: showAdminCodeField ? adminCode : undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Account created successfully!");
+        setName("");
+        setEmail("");
+        setPassword("");
+        setAdminCode("");
+        setShowAdminCodeField(false);
+        setAgreeToTerms(false);
+        setRememberDevice(false);
+        setEmailError("");
+        setPasswordStrength(0);
+
+        
+      } else {
+        toast.error(
+          data.message || "Unable to create account. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Sign-up error:", error);
+      toast.error("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -186,32 +248,32 @@ export default function SignUpPage() {
                 Remember this device
               </label>
             </div>
-            {!useOTP && (
-              <Button
-                type="button"
-                onClick={handleOTPRequest}
-                className="w-full bg-green-600 hover:bg-green-700 transition-colors"
+
+            <div className="flex items-center">
+              <Checkbox
+                id="adminCode"
+                checked={showAdminCodeField}
+                onCheckedChange={(checked) => setShowAdminCodeField(checked)}
+              />
+              <label
+                htmlFor="adminCode"
+                className="ml-2 block text-sm text-gray-300"
               >
-                <MessageSquare className="mr-2 h-4 w-4" /> Use One-Time Password
-              </Button>
-            )}
-            {useOTP && (
+                I have a code
+              </label>
+            </div>
+            {showAdminCodeField && (
               <div>
-                <Label htmlFor="otp">One-Time Password</Label>
                 <Input
-                  id="otp"
+                  id="adminCodeInput"
                   type="text"
-                  required
+                  value={adminCode}
+                  onChange={(e) => setAdminCode(e.target.value)}
                   className="bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter OTP"
                 />
-                {otpSent && (
-                  <p className="text-sm text-green-400 mt-1">
-                    OTP sent to your email/phone
-                  </p>
-                )}
               </div>
             )}
+
             <Button
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
@@ -288,39 +350,24 @@ export default function SignUpPage() {
         className="flex flex-1 flex-col items-center justify-center bg-gray-900 p-8"
       >
         <div className="w-full max-w-md">
-          <img
-            src="/public/logo/gad_logo-removebg-preview.png"
-            className="mx-auto mb-6"
-          />
+          <img src="/logo/gad.png" className="mx-auto mb-6" />
 
           <h1 className="text-4xl font-extrabold text-center text-gray-100">
             Welcome to GAD Nexus
           </h1>
           <p className="mt-4 text-lg text-center text-gray-400">
-            A futuristic approach to Gender and Development Information System
-            and Demographic Analysis.
+            A gentle approach to Gender and Development Information System and
+            Demographic Analysis.
           </p>
           <p className="mt-6 text-center text-gray-400">
             Already have an account?{" "}
-            <Link href="/signup" className="text-blue-400 hover:underline">
+            <Link href="/signin" className="text-blue-400 hover:underline">
               Sign in
             </Link>
           </p>
         </div>
       </motion.div>
-      {/* Success Modal */}
-      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Account Created Successfully!</DialogTitle>
-            <DialogDescription>
-              Thank you for joining GAD Nexus. A confirmation email has been
-              sent to {email}. Please verify your email to complete the
-              registration process.
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
+      <ToastContainer />
     </div>
   );
 }
