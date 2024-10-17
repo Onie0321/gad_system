@@ -28,6 +28,7 @@ import { FcGoogle } from "react-icons/fc";
 import { FaDiscord } from "react-icons/fa";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { createUser } from "../../../lib/appwrite";
 
 const calculatePasswordStrength = (password) => {
   const lengthScore = Math.min(password.length * 5, 25);
@@ -57,7 +58,6 @@ export default function SignUpPage() {
   }, [password]);
 
   const validateEmail = (email) => {
-    // Check if email ends with @ascot.edu.ph
     const re = /^[a-zA-Z0-9._%+-]+@ascot\.edu\.ph$/;
     return re.test(String(email).toLowerCase());
   };
@@ -77,13 +77,11 @@ export default function SignUpPage() {
   const handleSignUp = async (e) => {
     e.preventDefault();
 
-    // Check if all fields are filled
     if (!name || !email || !password) {
       toast.error("All fields are required.");
       return;
     }
 
-    // Validate email format
     if (!validateEmail(email)) {
       toast.error(
         "Please enter a valid ASCOT email address ending in @ascot.edu.ph."
@@ -91,7 +89,6 @@ export default function SignUpPage() {
       return;
     }
 
-    // Ensure password meets certain criteria (length, character complexity)
     if (
       password.length < 8 ||
       !/[A-Z]/.test(password) ||
@@ -104,7 +101,6 @@ export default function SignUpPage() {
       return;
     }
 
-    // Ensure user agrees to terms and conditions
     if (!agreeToTerms) {
       toast.error("You must agree to the terms and conditions.");
       return;
@@ -113,23 +109,15 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          password,
-          adminCode: showAdminCodeField ? adminCode : undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
+      const newUser = await createUser(
+        email,
+        password,
+        name,
+        showAdminCodeField ? "admin" : "user"
+      );
+      if (newUser) {
         toast.success("Account created successfully!");
+        // Reset form fields
         setName("");
         setEmail("");
         setPassword("");
@@ -139,16 +127,10 @@ export default function SignUpPage() {
         setRememberDevice(false);
         setEmailError("");
         setPasswordStrength(0);
-
-        
-      } else {
-        toast.error(
-          data.message || "Unable to create account. Please try again."
-        );
       }
     } catch (error) {
       console.error("Sign-up error:", error);
-      toast.error("An unexpected error occurred. Please try again.");
+      toast.error("Unable to create account. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -349,8 +331,28 @@ export default function SignUpPage() {
         transition={{ duration: 0.5 }}
         className="flex flex-1 flex-col items-center justify-center bg-gray-900 p-8"
       >
-        <div className="w-full max-w-md">
-          <img src="/logo/gad.png" className="mx-auto mb-6" />
+       <div className="w-full max-w-md">
+        <h4 className="text-xl font-bold text-center text-gray-200 mb-4">
+          Aurora State College of Technology
+        </h4>
+        <h1 className="text-4xl font-bold text-center text-gray-200 mb-4">
+Gender and Development         </h1>
+        <div className="flex justify-center items-center space-x-4 mb-6">
+          <img
+            src="/logo/gad.png"
+            alt="GAD Nexus Logo"
+            width={320}
+            height={320}
+            className="object-contain"
+          />
+          <img
+            src="/logo/ascot.png"
+            alt="ASCOT Logo"
+            width={320}
+            height={320}
+            className="object-contain"
+          />
+        </div>
 
           <h1 className="text-4xl font-extrabold text-center text-gray-100">
             Welcome to GAD Nexus

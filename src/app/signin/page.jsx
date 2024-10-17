@@ -21,6 +21,7 @@ import { FcGoogle } from "react-icons/fc";
 import { FaDiscord } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { signIn, getCurrentUser } from "../../lib/appwrite";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -40,55 +41,75 @@ export default function SignInPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      // Sign in the user and get the session
+      const session = await signIn(email, password);
 
-      const data = await response.json();
+      const user = await getCurrentUser(); 
 
-      if (response.ok) {
-        toast.success("Sign-in successful!");
-        setEmail("");
-        setPassword("");
-        if (data.redirectUrl) {
-          window.location.href = data.redirectUrl;
+      toast.success("Sign-in successful!");
+      setEmail("");
+      setPassword("");
+
+      if (user) {
+        console.log("User object:", user); 
+
+       
+        switch (user.role) {
+          case "admin":
+            router.push("/admin"); 
+            break;
+          case "user":
+            router.push("/officer"); 
+            break;
+          default:
+            toast.error("Error: Unknown user role");
+            break;
         }
-      } else {
-        toast.error(data.message || "Sign-in failed. Please try again.");
       }
     } catch (error) {
-      console.error("Sign-in error:", error);
-      toast.error("An unexpected error occurred. Please try again.");
+      toast.error(error.message || "Sign-in failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row bg-gray-900 text-gray-100">
+    <div className="flex min-h-screen flex-col md:flex-row bg-gray-900 text-gray-320">
       <motion.div
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5 }}
         className="flex flex-1 flex-col items-center justify-center p-8"
       >
-        <div className="w-full max-w-md">
+       <div className="w-full max-w-md">
+        <h4 className="text-small font-bold text-center text-gray-200 mb-4">
+          Aurora State College of Technology
+        </h4>
+        <h1 className="text-xl font-bold text-center text-gray-200 mb-4">
+Gender and Development         </h1>
+        <div className="flex justify-center items-center space-x-4 mb-6">
           <img
             src="/logo/gad.png"
             alt="GAD Nexus Logo"
-            className="mx-auto mb-6"
+            width={320}
+            height={320}
+            className="object-contain"
           />
-          <h1 className="text-4xl font-extrabold text-center">
-            Welcome to GAD Nexus
-          </h1>
-          <p className="mt-4 text-lg text-center text-gray-400">
-            Access your Gender and Development Information System
-          </p>
+          <img
+            src="/logo/ascot.png"
+            alt="ASCOT Logo"
+            width={320}
+            height={320}
+            className="object-contain"
+          />
         </div>
+        <h1 className="text-4xl font-extrabold text-gray-100 text-center">
+          Welcome to GAD Nexus
+        </h1>
+        <p className="mt-4 text-lg text-center text-gray-400">
+          Access your Gender and Development Information System
+        </p>
+      </div>
       </motion.div>
       <motion.div
         initial={{ opacity: 0, x: 50 }}
@@ -222,7 +243,10 @@ export default function SignInPage() {
           </div>
           <p className="mt-6 text-center text-gray-400">
             Don't have an account?{" "}
-            <Link href="/signup" className="text-blue-400 hover:underline">
+            <Link
+              href="/signin/signup"
+              className="text-blue-400 hover:underline"
+            >
               Sign up
             </Link>
           </p>
