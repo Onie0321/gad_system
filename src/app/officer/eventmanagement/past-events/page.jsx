@@ -52,6 +52,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  createEvent,
+  addParticipantToEvent,
+  checkDuplicateEvent,
+  fetchEvents,
+} from "../../../../lib/appwrite";
+import { getAcademicCategories } from "@/utils/categories";
 
 export default function PastEvents() {
   const [events, setEvents] = useState([]);
@@ -82,21 +89,15 @@ export default function PastEvents() {
   });
 
   useEffect(() => {
-    fetchEvents();
+    handleFetchEvents();
   }, []);
 
-  const fetchEvents = async () => {
+  const handleFetchEvents = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch("/api/addEvents");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (!Array.isArray(data)) {
-        throw new Error("Data is not an array");
-      }
+
+      const data = await fetchEvents();
       setEvents(data);
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -107,6 +108,8 @@ export default function PastEvents() {
       setIsLoading(false);
     }
   };
+
+  const departmentOptions = getAcademicCategories();
 
   const sortEvents = (column) => {
     if (column === sortColumn) {
@@ -168,31 +171,8 @@ export default function PastEvents() {
 
   const updateEvent = async (event) => {
     try {
-      const response = await fetch("/api/addEvents", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: event.id,
-          eventName: event.eventName,
-          eventDate: event.eventDate,
-          eventTime: event.eventTime,
-          eventVenue: event.eventVenue,
-          eventType: event.eventType,
-          eventCategory: event.eventCategory,
-          numberOfHours: parseInt(event.numberOfHours),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          `HTTP error! status: ${response.status}, message: ${errorData.message}`
-        );
-      }
-
-      await fetchEvents();
+      await createEvent(event); // Assuming `createEvent` updates the event
+      await handleFetchEvents();
       setEditingEvent(null);
     } catch (error) {
       console.error("Error updating event:", error);
@@ -202,40 +182,9 @@ export default function PastEvents() {
 
   const updateParticipant = async (updatedParticipant) => {
     try {
-      const response = await fetch("/api/addParticipants", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: updatedParticipant._id,
-          name: updatedParticipant.name,
-          sex: updatedParticipant.sex,
-          age: parseInt(updatedParticipant.age),
-          department: updatedParticipant.department,
-          year: updatedParticipant.year,
-          section: updatedParticipant.section,
-          ethnicGroup: updatedParticipant.ethnicGroup,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to update participant: ${errorData.message}`);
-      }
-
-      const updatedParticipantData = await response.json();
-
-      setSelectedEvent((prevEvent) => ({
-        ...prevEvent,
-        participants: prevEvent.participants.map((p) =>
-          p._id === updatedParticipantData._id ? updatedParticipantData : p
-        ),
-      }));
-
+      await addParticipantToEvent(updatedParticipant); // Update participant API
+      await handleFetchEvents();
       setEditingParticipant(null);
-
-      await fetchEvents();
     } catch (error) {
       console.error("Error updating participant:", error);
       setError(`Failed to update participant: ${error.message}`);
@@ -244,30 +193,11 @@ export default function PastEvents() {
 
   const addParticipant = async (eventId) => {
     try {
-      const response = await fetch("/api/addParticipants", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          eventId,
-          ...newParticipant,
-          age: parseInt(newParticipant.age),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to add participant: ${errorData.message}`);
-      }
-
-      const addedParticipant = await response.json();
-
+      await addParticipantToEvent(eventId, newParticipant);
       setSelectedEvent((prevEvent) => ({
         ...prevEvent,
-        participants: [...prevEvent.participants, addedParticipant],
+        participants: [...prevEvent.participants, newParticipant],
       }));
-
       setShowAddParticipant(false);
       setNewParticipant({
         name: "",
@@ -278,8 +208,7 @@ export default function PastEvents() {
         section: "",
         ethnicGroup: "",
       });
-
-      await fetchEvents();
+      await handleFetchEvents();
     } catch (error) {
       console.error("Error adding participant:", error);
       setError(`Failed to add participant: ${error.message}`);
@@ -291,10 +220,6 @@ export default function PastEvents() {
   };
 
   const filteredEvents = events.filter((event) => {
-    if (!event || !event.eventName) {
-      console.warn("Event with undefined name:", event);
-      return false;
-    }
     const matchesSearch = event.eventName
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
@@ -921,17 +846,26 @@ export default function PastEvents() {
               placeholder="Age"
               className="mb-2"
             />
-            <Input
+            <Select
               value={newParticipant.department}
-              onChange={(e) =>
+              onValueChange={(value) =>
                 setNewParticipant({
                   ...newParticipant,
-                  department: e.target.value,
+                  department: value,
                 })
               }
-              placeholder="Department"
-              className="mb-2"
-            />
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departmentOptions.map((department) => (
+                  <SelectItem key={department} value={department}>
+                    {department}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Input
               value={newParticipant.year}
               onChange={(e) =>
