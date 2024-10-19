@@ -1,18 +1,99 @@
 "use client";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { UserCircle, Lock, Mail, Github, Twitter } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  UserCircle,
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  Facebook,
+  Twitter,
+  AlertTriangle,
+} from "lucide-react";
+import ReCAPTCHA from "react-google-recaptcha";
+import { FcGoogle } from "react-icons/fc";
+import { FaDiscord } from "react-icons/fa";
 
-export default function Component() {
-  const [showMFA, setShowMFA] = useState(false);
+export default function EnhancedSignInPage() {
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [showCaptchaModal, setShowCaptchaModal] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [quote, setQuote] = useState(
+    "Empowering communities through data-driven gender equality initiatives."
+  );
+
+  useEffect(() => {
+    // Simulating quote change every 10 seconds
+    const interval = setInterval(() => {
+      setQuote(
+        "Bridging the gap between gender statistics and actionable insights."
+      );
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const validateEmail = (email) => {
+    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return re.test(String(email).toLowerCase());
+  };
+
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    if (!validateEmail(e.target.value)) {
+      setEmailError("Please enter a valid email address");
+    } else {
+      setEmailError("");
+    }
+  };
+
+  const handleSignIn = async (e) => {
+    e.preventDefault();
+    if (validateEmail(email) && password) {
+      try {
+        await account.createEmailSession(email, password);
+        // Redirect to dashboard or handle successful login
+      } catch (error) {
+        console.error("Login failed:", error);
+        // Handle login error
+      }
+    }
+  };
+
+  const handleCaptchaVerification = (value) => {
+    if (value) {
+      setShowCaptchaModal(false);
+      setShowSecurityModal(true);
+    }
+  };
+
+  const handleSecurityVerification = () => {
+    // Implement security verification logic here
+    setShowSecurityModal(false);
+    // Proceed with sign-in
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-900 text-gray-100 md:flex-row">
+    <div className="flex min-h-screen flex-col md:flex-row bg-gray-900 text-gray-100">
       {/* Left Column */}
       <motion.div
         initial={{ opacity: 0, x: -50 }}
@@ -21,7 +102,7 @@ export default function Component() {
         className="flex flex-1 flex-col items-center justify-center p-8 relative overflow-hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-purple-700 opacity-50" />
-        <div className="relative z-10 text-center">
+        <div className="relative z-10 text-center w-full max-w-md">
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -35,21 +116,25 @@ export default function Component() {
           >
             GAD Nexus
           </motion.div>
-          <p className="mb-8 text-xl font-light leading-relaxed max-w-md">
-            Empowering gender equality through advanced event management and
-            demographic analysis
-          </p>
-
+          <motion.div
+            className="mb-8 text-xl font-light leading-relaxed bg-gray-800 bg-opacity-50 p-6 rounded-lg backdrop-blur-sm relative"
+            style={{
+              width: "300px",
+              height: "300px",
+              margin: "0 auto",
+            }}
+          >
+            <div className="absolute inset-0 bg-blue-500 opacity-20 blur-md" />
+            <div className="relative z-10">{quote}</div>
+          </motion.div>
           <Button
-            as={Link}
-            href="/signup"
             variant="outline"
+            onClick={() => router.push("/signup/signin")}
             className="w-full max-w-xs bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-300"
           >
             Signup
           </Button>
         </div>
-        <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-gray-900 to-transparent" />
       </motion.div>
 
       {/* Right Column */}
@@ -74,17 +159,19 @@ export default function Component() {
               Access your GAD Nexus dashboard
             </p>
           </div>
-          <form className="mt-8 space-y-6">
+          <form onSubmit={handleSignIn} className="mt-8 space-y-6">
             <div className="space-y-4">
               <div className="relative">
                 <Label htmlFor="email" className="sr-only">
-                  Email or Username
+                  Email
                 </Label>
                 <Input
                   id="email"
-                  type="text"
-                  placeholder="Email or Username"
+                  type="email"
+                  placeholder="Email"
                   required
+                  value={email}
+                  onChange={handleEmailChange}
                   className="pl-10 bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <Mail
@@ -92,34 +179,47 @@ export default function Component() {
                   size={18}
                 />
               </div>
+              {emailError && (
+                <p className="text-red-500 text-sm">{emailError}</p>
+              )}
               <div className="relative">
                 <Label htmlFor="password" className="sr-only">
                   Password
                 </Label>
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Password"
                   required
-                  className="pl-10 bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 pr-10 bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <Lock
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                   size={18}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <Checkbox
                   id="remember"
-                  className="text-blue-500 focus:ring-blue-500"
+                  checked={rememberDevice}
+                  onCheckedChange={setRememberDevice}
                 />
                 <Label
                   htmlFor="remember"
                   className="ml-2 text-sm text-gray-300"
                 >
-                  Stay connected
+                  Remember this device
                 </Label>
               </div>
               <Link
@@ -132,28 +232,10 @@ export default function Component() {
             <Button
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
-              onClick={() => setShowMFA(true)}
             >
               Sign In
             </Button>
           </form>
-          {showMFA && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-4"
-            >
-              <h3 className="text-xl font-semibold">Security Verification</h3>
-              <Input
-                type="text"
-                placeholder="Enter 2FA code"
-                className="bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <Button className="w-full bg-green-600 hover:bg-green-700 transition-colors">
-                Verify
-              </Button>
-            </motion.div>
-          )}
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -170,20 +252,90 @@ export default function Component() {
                 variant="outline"
                 className="bg-gray-700 hover:bg-gray-600 transition-colors"
               >
-                <Github className="mr-2" size={18} />
-                GitHub
+                <Facebook className="mr-2 h-4 w-4 text-blue-500" />
+                Facebook
               </Button>
               <Button
                 variant="outline"
                 className="bg-gray-700 hover:bg-gray-600 transition-colors"
               >
-                <Twitter className="mr-2" size={18} />
+                <FcGoogle className="mr-2 h-4 w-4" />
+                Google
+              </Button>
+              <Button
+                variant="outline"
+                className="bg-gray-700 hover:bg-gray-600 transition-colors"
+              >
+                <FaDiscord className="mr-2 h-4 w-4 text-indigo-500" />
+                Discord
+              </Button>
+              <Button
+                variant="outline"
+                className="bg-gray-700 hover:bg-gray-600 transition-colors"
+              >
+                <Twitter className="mr-2 h-4 w-4 text-blue-400" />
                 Twitter
               </Button>
             </div>
           </div>
         </div>
       </motion.div>
+
+      {/* CAPTCHA Modal */}
+      <AnimatePresence>
+        {showCaptchaModal && (
+          <Dialog open={showCaptchaModal} onOpenChange={setShowCaptchaModal}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>CAPTCHA Challenge</DialogTitle>
+                <DialogDescription>
+                  Please complete the CAPTCHA to verify you are human.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-center my-4">
+                <ReCAPTCHA
+                  sitekey="your-recaptcha-site-key"
+                  onChange={handleCaptchaVerification}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </AnimatePresence>
+
+      {/* Security Verification Modal */}
+      <AnimatePresence>
+        {showSecurityModal && (
+          <Dialog open={showSecurityModal} onOpenChange={setShowSecurityModal}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Security Verification</DialogTitle>
+                <DialogDescription>
+                  Please verify your identity by answering the security
+                  question.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="text-sm text-gray-300">
+                  What is the name of your first pet?
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Answer"
+                  className="bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <Button
+                  variant="primary"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  onClick={handleSecurityVerification}
+                >
+                  Verify
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

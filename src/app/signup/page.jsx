@@ -1,38 +1,117 @@
 "use client";
+
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation"; // For accessing query params in the App Router
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { UserPlus, Mail, Lock, User, Github, Twitter } from "lucide-react";
+import {
+  UserPlus,
+  Eye,
+  EyeOff,
+  Facebook,
+  Twitter,
+  MessageSquare,
+} from "lucide-react";
+import { FcGoogle } from "react-icons/fc";
+import { FaDiscord } from "react-icons/fa";
 
-export default function Component() {
-  const [agreed, setAgreed] = useState(false);
-  const [checkboxEnabled, setCheckboxEnabled] = useState(false);
+// Reused from old code
+const calculatePasswordStrength = (password) => {
+  const lengthScore = Math.min(password.length * 5, 25);
+  const varietyScore =
+    (/[a-z]/.test(password) ? 15 : 0) +
+    (/[A-Z]/.test(password) ? 15 : 0) +
+    (/[0-9]/.test(password) ? 15 : 0) +
+    (/[^a-zA-Z0-9]/.test(password) ? 15 : 0);
+  return Math.min(lengthScore + varietyScore, 100);
+};
+
+export default function SignUpPage() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [emailError, setEmailError] = useState("");
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [useOTP, setUseOTP] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [hasTypedPassword, setHasTypedPassword] = useState(false);
+
+  const searchParams = useSearchParams(); // Use searchParams for accessing query params
+
+  // Check URL query parameters for acceptedTerms and acceptedPrivacy
+  useEffect(() => {
+    const acceptedTerms = searchParams.get("acceptedTerms");
+    const acceptedPrivacy = searchParams.get("acceptedPrivacy");
+    if (acceptedTerms === "true" || acceptedPrivacy === "true") {
+      setAgreeToTerms(true); // Automatically check the checkbox if either is true
+    }
+  }, [searchParams]);
 
   useEffect(() => {
-    // Check if the terms and conditions have been accepted
-    const termsAccepted = localStorage.getItem("termsAccepted");
-    if (termsAccepted === "true") {
-      setAgreed(true);
-      setCheckboxEnabled(true); // Enable checkbox if terms are accepted
-    } else {
-      setAgreed(false);
-      setCheckboxEnabled(false); // Disable checkbox if terms are not accepted
+    if (password.length > 0) {
+      setHasTypedPassword(true);
     }
-  }, []);
+    setPasswordStrength(calculatePasswordStrength(password));
+  }, [password]);
 
-  const handleCheckboxChange = (checked) => {
-    setAgreed(checked);
+  const validateEmail = (email) => {
+    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return re.test(String(email).toLowerCase());
+  };
+
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    if (!validateEmail(e.target.value)) {
+      setEmailError("Please enter a valid email address");
+    } else {
+      setEmailError("");
+    }
+  };
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    if (validateEmail(email) && password && agreeToTerms) {
+      setIsLoading(true);
+      try {
+        // Simulating an API call
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        setShowSuccessModal(true);
+      } catch (error) {
+        console.error("Sign up error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleOTPRequest = () => {
+    setUseOTP(true);
+    setOtpSent(true);
+    // Implement OTP sending logic here
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-900 text-gray-100 md:flex-row">
-      {/* Left Column (Sign Up Form) */}
+    <div className="flex min-h-screen flex-col md:flex-row bg-gray-900 text-gray-100">
+      {/* Right Column */}
       <motion.div
-        initial={{ opacity: 0, x: -50 }}
+        initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5 }}
         className="flex flex-1 flex-col items-center justify-center bg-gray-800 p-8"
@@ -47,107 +126,151 @@ export default function Component() {
             >
               <UserPlus size={48} className="text-blue-400" />
             </motion.div>
-            <h2 className="mt-4 text-3xl font-extrabold">Join GAD Nexus</h2>
+            <h2 className="mt-4 text-3xl font-extrabold">Create an Account</h2>
             <p className="mt-2 text-gray-400">
-              Create your account and start making a difference
+              Join GAD Nexus and make a difference
             </p>
           </div>
-          <form className="mt-8 space-y-6">
+          <form onSubmit={handleSignUp} className="mt-8 space-y-6">
             <div className="space-y-4">
-              <div className="relative">
-                <Label htmlFor="name" className="sr-only">
-                  Full Name
-                </Label>
+              <div>
+                <Label htmlFor="name">Full Name</Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Full Name"
                   required
-                  className="pl-10 bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <User
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={18}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <div className="relative">
-                <Label htmlFor="email" className="sr-only">
-                  Email Address
-                </Label>
+              <div>
+                <Label htmlFor="email">Email Address</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Email Address"
                   required
-                  className="pl-10 bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                  value={email}
+                  onChange={handleEmailChange}
+                  className="bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <Mail
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={18}
-                />
+                {emailError && (
+                  <p className="text-red-500 text-sm mt-1">{emailError}</p>
+                )}
               </div>
-              <div className="relative">
-                <Label htmlFor="password" className="sr-only">
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Password"
-                  required
-                  className="pl-10 bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <Lock
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={18}
-                />
-              </div>
-              <div className="relative">
-                <Label htmlFor="confirm-password" className="sr-only">
-                  Confirm Password
-                </Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="Confirm Password"
-                  required
-                  className="pl-10 bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <Lock
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={18}
-                />
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                {hasTypedPassword && (
+                  <>
+                    <Progress value={passwordStrength} className="mt-2" />
+                    <p className="text-sm text-gray-400 mt-1">
+                      Password strength:{" "}
+                      {passwordStrength < 33
+                        ? "Weak"
+                        : passwordStrength < 66
+                        ? "Medium"
+                        : "Strong"}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
-            <div className="flex items-center">
-              <Checkbox
-                id="agree-terms"
-                checked={agreed}
-                onCheckedChange={handleCheckboxChange}
-                disabled={!checkboxEnabled}
-                className="text-blue-500 focus:ring-blue-500"
-              />
-              <Label
-                htmlFor="agree-terms"
-                className="ml-2 text-sm text-gray-300"
-              >
-                I agree to the{" "}
-                <Link
-                  href="/signup/termsandconditions"
-                  className="text-blue-400 hover:text-blue-300 transition-colors"
+            {hasTypedPassword && (
+              <div className="flex items-center">
+                <Checkbox
+                  id="remember"
+                  checked={rememberDevice}
+                  onCheckedChange={(checked) => setRememberDevice(checked)}
+                  className="border border-gray-400 rounded-md"
+                />
+                <label
+                  htmlFor="remember"
+                  className="ml-2 block text-sm text-gray-300"
                 >
-                  Terms and Conditions
-                </Link>
-              </Label>
-            </div>
+                  Remember this device
+                </label>
+              </div>
+            )}
+            {!useOTP && (
+              <Button
+                type="button"
+                onClick={handleOTPRequest}
+                className="w-full bg-green-600 hover:bg-green-700 transition-colors"
+              >
+                <MessageSquare className="mr-2 h-4 w-4" /> Use One-Time Password
+              </Button>
+            )}
+            {useOTP && (
+              <div>
+                <Label htmlFor="otp">One-Time Password</Label>
+                <Input
+                  id="otp"
+                  type="text"
+                  required
+                  className="bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter OTP"
+                />
+                {otpSent && (
+                  <p className="text-sm text-green-400 mt-1">
+                    OTP sent to your email/phone
+                  </p>
+                )}
+              </div>
+            )}
             <Button
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
-              disabled={!agreed}
+              disabled={isLoading}
             >
-              Create Account
+              {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
+            <div className="flex items-center">
+              <Checkbox
+                id="terms"
+                checked={agreeToTerms} // Automatically checked if terms or privacy are accepted
+                onCheckedChange={(checked) => setAgreeToTerms(checked)}
+                className="border border-gray-400 checked:bg-blue-600 checked:border-transparent rounded-md"
+              />
+              <label
+                htmlFor="terms"
+                className="ml-2 block text-sm text-gray-300"
+              >
+                By signing up, you agree to our{" "}
+                <Link
+                  href="/signup/termsandconditions"
+                  className="text-blue-400 hover:underline"
+                >
+                  Terms and Conditions
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/signup/privacyandpolicy"
+                  className="text-blue-400 hover:underline"
+                >
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
           </form>
+
+          {/* Add the "Continue with" buttons for third-party providers */}
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -160,63 +283,103 @@ export default function Component() {
               </div>
             </div>
             <div className="mt-6 grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                className="bg-gray-700 hover:bg-gray-600 transition-colors"
+              <a
+                href="https://www.google.com"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <Github className="mr-2" size={18} />
-                GitHub
-              </Button>
-              <Button
-                variant="outline"
-                className="bg-gray-700 hover:bg-gray-600 transition-colors"
+                <Button
+                  variant="outline"
+                  className="bg-gray-700 hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 w-full"
+                >
+                  <FcGoogle className="mr-2 h-4 w-4" /> Google
+                </Button>
+              </a>
+              <a
+                href="https://discord.com"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <Twitter className="mr-2" size={18} />
-                Twitter
-              </Button>
+                <Button
+                  variant="outline"
+                  className="bg-gray-700 hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 w-full"
+                >
+                  <FaDiscord className="mr-2 h-4 w-4 text-blue-500" /> Discord
+                </Button>
+              </a>
+
+              <a
+                href="https://www.facebook.com/ascotgad?mibextid=ZbWKwL"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button
+                  variant="outline"
+                  className="bg-gray-700 hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 w-full"
+                >
+                  <Facebook className="h-4 w-4 text-blue-600" /> Facebook
+                </Button>
+              </a>
+
+              <a
+                href="https://twitter.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button
+                  variant="outline"
+                  className="bg-gray-700 hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 w-full"
+                >
+                  <Twitter className="mr-2 h-4 w-4 text-blue-400" /> Twitter
+                </Button>
+              </a>
             </div>
           </div>
         </div>
       </motion.div>
 
-      {/* Right Column (Branding) */}
+      {/* Left Column */}
       <motion.div
-        initial={{ opacity: 0, x: 50 }}
+        initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex flex-1 flex-col items-center justify-center p-8 relative overflow-hidden"
+        className="flex flex-1 flex-col items-center justify-center bg-gray-900 p-8"
       >
-        <div className="absolute inset-0 bg-gradient-to-bl from-blue-600 to-purple-700 opacity-50" />
-        <div className="relative z-10 text-center">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{
-              delay: 0.2,
-              type: "spring",
-              stiffness: 260,
-              damping: 20,
-            }}
-            className="mb-8 text-5xl font-bold tracking-tight"
-          >
-            GAD Nexus
-          </motion.div>
-          <p className="mb-8 text-xl font-light leading-relaxed max-w-md">
-            Join our community of change-makers and contribute to a more
-            equitable world through data-driven insights
+        <div className="w-full max-w-md">
+          <img src="/logo/gad.png" className="mx-auto mb-6" />
+
+          <h1 className="text-4xl font-extrabold text-center text-gray-100">
+            Welcome to GAD Nexus
+          </h1>
+          <p className="mt-4 text-lg text-center text-gray-400">
+            A futuristic approach to Gender and Development Information System
+            and Demographic Analysis.
           </p>
-          <p className="text-sm">
+          <p className="mt-6 text-center text-gray-400">
             Already have an account?{" "}
             <Link
               href="/signup/signin"
-              className="text-blue-400 hover:text-blue-300 transition-colors"
+              className="text-blue-400 hover:underline"
             >
-              Sign in here
+              Sign in
             </Link>
           </p>
         </div>
-        <div className="absolute bottom-0 right-0 w-full h-1/3 bg-gradient-to-t from-gray-900 to-transparent" />
       </motion.div>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Account Created Successfully!</DialogTitle>
+            <DialogDescription>
+              Thank you for joining GAD Nexus. A confirmation email has been
+              sent to {email}. Please verify your email to complete the
+              registration process.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
