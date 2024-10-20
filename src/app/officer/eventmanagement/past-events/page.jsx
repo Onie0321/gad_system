@@ -29,6 +29,7 @@ import {
   Trash2,
   Users,
   ChartColumnBig,
+  RefreshCw,
   PlusCircle,
   X,
 } from "lucide-react";
@@ -78,6 +79,9 @@ export default function PastEvents() {
   const [participantSearchTerm, setParticipantSearchTerm] = useState("");
   const [showDemographicAnalysis, setShowDemographicAnalysis] = useState(false);
   const [showAddParticipant, setShowAddParticipant] = useState(false);
+  const [participantAdded, setParticipantAdded] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const [newParticipant, setNewParticipant] = useState({
     name: "",
     sex: "",
@@ -87,6 +91,15 @@ export default function PastEvents() {
     section: "",
     ethnicGroup: "",
   });
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await handleFetchEvents();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     handleFetchEvents();
@@ -238,11 +251,25 @@ export default function PastEvents() {
 
   return (
     <Card className="w-full bg-gray-800 border-2 border-pink-500 rounded-xl overflow-hidden">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-pink-400">
+<CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-2xl font-bold text-pink-400">
           <Calendar className="inline-block mr-2" />
           Past Events
         </CardTitle>
+        <Button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <motion.div
+            animate={{ rotate: isRefreshing ? 360 : 0 }}
+            transition={{ duration: 1, ease: "linear", repeat: isRefreshing ? Infinity : 0 }}
+            className="mr-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </motion.div>
+          {isRefreshing ? "Refreshing..." : "Refresh"}
+        </Button>
       </CardHeader>
       <CardContent>
         <div className="flex justify-between mb-4">
@@ -432,6 +459,9 @@ export default function PastEvents() {
             <DialogHeader>
               <DialogTitle>Edit Event</DialogTitle>
             </DialogHeader>
+            <div className="mb-4">
+              Participants: {editingEvent?.participants?.length || 0}
+            </div>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -446,7 +476,7 @@ export default function PastEvents() {
                     eventName: e.target.value,
                   })
                 }
-                placeholder="Event Name"
+                placeholder="Enter Event Name"
                 className="mb-2"
               />
               <Input
@@ -458,17 +488,31 @@ export default function PastEvents() {
                     eventDate: e.target.value,
                   })
                 }
+                placeholder="Select Event Date"
                 className="mb-2"
               />
               <Input
-                value={editingEvent?.eventTime}
+                type="time"
+                value={editingEvent?.eventTimeFrom}
                 onChange={(e) =>
                   setEditingEvent({
                     ...editingEvent,
-                    eventTime: e.target.value,
+                    eventTimeFrom: e.target.value,
                   })
                 }
-                placeholder="Event Time"
+                placeholder="Event Time From"
+                className="mb-2"
+              />
+              <Input
+                type="time"
+                value={editingEvent?.eventTimeTo}
+                onChange={(e) =>
+                  setEditingEvent({
+                    ...editingEvent,
+                    eventTimeTo: e.target.value,
+                  })
+                }
+                placeholder="Event Time To"
                 className="mb-2"
               />
               <Input
@@ -479,7 +523,7 @@ export default function PastEvents() {
                     eventVenue: e.target.value,
                   })
                 }
-                placeholder="Event Venue"
+                placeholder="Enter Event Venue"
                 className="mb-2"
               />
               <Select
@@ -488,37 +532,53 @@ export default function PastEvents() {
                   setEditingEvent({
                     ...editingEvent,
                     eventType: value,
+                    eventCategory: "", // Reset category when type changes
                   })
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Event Type" />
+                  <SelectValue placeholder="Select Event Type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Academic">Academic</SelectItem>
                   <SelectItem value="Non-Academic">Non-Academic</SelectItem>
                 </SelectContent>
               </Select>
-              <Input
+              <Select
                 value={editingEvent?.eventCategory}
-                onChange={(e) =>
+                onValueChange={(value) =>
                   setEditingEvent({
                     ...editingEvent,
-                    eventCategory: e.target.value,
+                    eventCategory: value,
                   })
                 }
-                placeholder="Event Category"
-                className="mb-2"
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Event Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {editingEvent?.eventType === "Academic"
+                    ? getAcademicCategories().map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))
+                    : [
+                        "Sports",
+                        "Cultural",
+                        "Social",
+                        "Other",
+                      ].map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                </SelectContent>
+              </Select>
               <Input
                 type="number"
                 value={editingEvent?.numberOfHours}
-                onChange={(e) =>
-                  setEditingEvent({
-                    ...editingEvent,
-                    numberOfHours: e.target.value,
-                  })
-                }
+                readOnly
                 placeholder="Number of Hours"
                 className="mb-2"
               />
@@ -528,176 +588,6 @@ export default function PastEvents() {
         </Dialog>
       )}
 
-      {selectedEvent && showParticipants && (
-        <Card className="bg-gray-800 border-2 border-pink-500 rounded-xl overflow-hidden mt-4">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-pink-400">
-              <Users className="inline-block mr-2" />
-              Participants for {selectedEvent.eventName}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between mb-4">
-              <Input
-                icon={<Search className="w-4 h-4" />}
-                placeholder="Search participants..."
-                value={participantSearchTerm}
-                onChange={(e) => setParticipantSearchTerm(e.target.value)}
-                className="bg-gray-700 border-pink-500 text-white w-1/3"
-              />
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead
-                    className="text-pink-300 cursor-pointer"
-                    onClick={() => sortParticipants("name")}
-                  >
-                    Name{" "}
-                    {participantSortColumn === "name" &&
-                      (participantSortDirection === "asc" ? (
-                        <ChevronUp className="inline w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="inline w-4 h-4" />
-                      ))}
-                  </TableHead>
-                  <TableHead
-                    className="text-pink-300 cursor-pointer"
-                    onClick={() => sortParticipants("sex")}
-                  >
-                    Sex{" "}
-                    {participantSortColumn === "sex" &&
-                      (participantSortDirection === "asc" ? (
-                        <ChevronUp className="inline w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="inline w-4 h-4" />
-                      ))}
-                  </TableHead>
-                  <TableHead
-                    className="text-pink-300 cursor-pointer"
-                    onClick={() => sortParticipants("age")}
-                  >
-                    Age{" "}
-                    {participantSortColumn === "age" &&
-                      (participantSortDirection === "asc" ? (
-                        <ChevronUp className="inline w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="inline w-4 h-4" />
-                      ))}
-                  </TableHead>
-                  <TableHead
-                    className="text-pink-300 cursor-pointer"
-                    onClick={() => sortParticipants("department")}
-                  >
-                    Department{" "}
-                    {participantSortColumn === "department" &&
-                      (participantSortDirection === "asc" ? (
-                        <ChevronUp className="inline w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="inline w-4 h-4" />
-                      ))}
-                  </TableHead>
-                  <TableHead
-                    className="text-pink-300 cursor-pointer"
-                    onClick={() => sortParticipants("year")}
-                  >
-                    Year{" "}
-                    {participantSortColumn === "year" &&
-                      (participantSortDirection === "asc" ? (
-                        <ChevronUp className="inline w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="inline w-4 h-4" />
-                      ))}
-                  </TableHead>
-                  <TableHead
-                    className="text-pink-300 cursor-pointer"
-                    onClick={() => sortParticipants("section")}
-                  >
-                    Section{" "}
-                    {participantSortColumn === "section" &&
-                      (participantSortDirection === "asc" ? (
-                        <ChevronUp className="inline w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="inline w-4 h-4" />
-                      ))}
-                  </TableHead>
-                  <TableHead
-                    className="text-pink-300 cursor-pointer"
-                    onClick={() => sortParticipants("ethnicGroup")}
-                  >
-                    Ethnic Group{" "}
-                    {participantSortColumn === "ethnicGroup" &&
-                      (participantSortDirection === "asc" ? (
-                        <ChevronUp className="inline w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="inline w-4 h-4" />
-                      ))}
-                  </TableHead>
-                  <TableHead className="text-pink-300">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredParticipants.map((participant) => (
-                  <TableRow key={participant._id} className="hover:bg-gray-700">
-                    <TableCell className="text-white">
-                      {participant.name}
-                    </TableCell>
-                    <TableCell className="text-white">
-                      {participant.sex}
-                    </TableCell>
-                    <TableCell className="text-white">
-                      {participant.age}
-                    </TableCell>
-                    <TableCell className="text-white">
-                      {participant.department}
-                    </TableCell>
-                    <TableCell className="text-white">
-                      {participant.year}
-                    </TableCell>
-                    <TableCell className="text-white">
-                      {participant.section}
-                    </TableCell>
-                    <TableCell className="text-white">
-                      {participant.ethnicGroup}
-                    </TableCell>
-                    <TableCell className="text-white">
-                      <div className="flex space-x-2">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button className="bg-yellow-600 hover:bg-yellow-700">
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Edit Participant
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to edit this participant?
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  setEditingParticipant(participant)
-                                }
-                              >
-                                Continue
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
 
       {editingParticipant && (
         <Dialog
@@ -759,10 +649,10 @@ export default function PastEvents() {
                 onChange={(e) =>
                   setEditingParticipant({
                     ...editingParticipant,
-                    department: e.target.value,
+                    school: e.target.value,
                   })
                 }
-                placeholder="Department"
+                placeholder="School"
                 className="mb-2"
               />
               <Input
@@ -804,7 +694,7 @@ export default function PastEvents() {
         </Dialog>
       )}
 
-      <Dialog open={showAddParticipant} onOpenChange={setShowAddParticipant}>
+<Dialog open={showAddParticipant} onOpenChange={setShowAddParticipant}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Participant</DialogTitle>
@@ -856,24 +746,32 @@ export default function PastEvents() {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Department" />
+                <SelectValue placeholder="School" />
               </SelectTrigger>
               <SelectContent>
-                {departmentOptions.map((department) => (
-                  <SelectItem key={department} value={department}>
-                    {department}
+                {getAcademicCategories().map((school) => (
+                  <SelectItem key={school} value={school}>
+                    {school}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Input
+            <Select
               value={newParticipant.year}
-              onChange={(e) =>
-                setNewParticipant({ ...newParticipant, year: e.target.value })
+              onValueChange={(value) =>
+                setNewParticipant({ ...newParticipant, year: value })
               }
-              placeholder="Year"
-              className="mb-2"
-            />
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1st Year</SelectItem>
+                <SelectItem value="2">2nd Year</SelectItem>
+                <SelectItem value="3">3rd Year</SelectItem>
+                <SelectItem value="4">4th Year</SelectItem>
+              </SelectContent>
+            </Select>
             <Input
               value={newParticipant.section}
               onChange={(e) =>
@@ -885,19 +783,44 @@ export default function PastEvents() {
               placeholder="Section"
               className="mb-2"
             />
-            <Input
+            <Select
               value={newParticipant.ethnicGroup}
-              onChange={(e) =>
+              onValueChange={(value) =>
                 setNewParticipant({
                   ...newParticipant,
-                  ethnicGroup: e.target.value,
+                  ethnicGroup: value,
                 })
               }
-              placeholder="Ethnic Group"
-              className="mb-2"
-            />
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Ethnic Group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Tagalog">Tagalog</SelectItem>
+                <SelectItem value="Cebuano">Cebuano</SelectItem>
+                <SelectItem value="Ilocano">Ilocano</SelectItem>
+                <SelectItem value="Bicolano">Bicolano</SelectItem>
+                <SelectItem value="Waray">Waray</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {newParticipant.ethnicGroup === "Other" && (
+              <Input
+                value={newParticipant.otherEthnicGroup}
+                onChange={(e) =>
+                  setNewParticipant({
+                    ...newParticipant,
+                    otherEthnicGroup: e.target.value,
+                  })
+                }
+                placeholder="Specify Ethnic Group"
+                className="mt-2 mb-2"
+              />
+            )}
             <DialogFooter>
-              <Button type="submit">Add Participant</Button>
+              <Button type="submit">
+                {participantAdded ? "Add Another Participant" : "Add Participant"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
