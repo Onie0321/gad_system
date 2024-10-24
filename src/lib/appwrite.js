@@ -16,6 +16,7 @@ export const appwriteConfig = {
   eventCollectionId: process.env.NEXT_PUBLIC_APPWRITE_EVENT_COLLECTION_ID,
   participantCollectionId:
     process.env.NEXT_PUBLIC_APPWRITE_PARTICIPANT_COLLECTION_ID,
+    responseCollectionId: process.env.NEXT_PUBLIC_APPWRITE_RESPONSES_COLLECTION_ID,
 };
 
 const client = new Client();
@@ -288,13 +289,48 @@ export async function addParticipantToEvent(eventId, participantData) {
   }
 }
 
-const uploadDataToAppwrite = async (excelData) => {
-  const collectionId = "YOUR_COLLECTION_ID"; // The collection ID you want to upload to
-  const databaseId = "YOUR_DATABASE_ID"; // The database ID where the collection is located
+export async function fetchParticipants(eventId) {
+  if (!eventId) {
+    throw new Error("EventId is required to fetch participants");
+  }
+
+  try {
+    const eventDocument = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.eventCollectionId,
+      eventId
+    );
+
+    if (!eventDocument.participants || eventDocument.participants.length === 0) {
+      return []; // No participants found
+    }
+
+    const participants = [];
+    // Fetch each participant by their ID
+    for (const participantId of eventDocument.participants) {
+      const participant = await databases.getDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.participantCollectionId,
+        participantId
+      );
+      participants.push(participant);
+    }
+
+    console.log("Fetched Participants:", participants); // Log the participant data for debugging
+    return participants;
+  } catch (error) {
+    console.error("Error fetching participants:", error);
+    throw new Error(`Error fetching participants: ${error.message}`);
+  }
+}
+
+export const uploadDataToAppwrite = async (excelData) => {
+  const responseCollectionId = appwriteConfig.responseCollectionId;
+const databaseId = appwriteConfig.databaseId;
 
   try {
     for (const row of excelData) {
-      await databases.createDocument(databaseId, collectionId, "unique()", row);
+      await databases.createDocument(databaseId, responseCollectionId, "unique()", row);
     }
     console.log("Data uploaded successfully!");
   } catch (error) {
@@ -319,3 +355,4 @@ export async function checkIfParticipantExists(eventId, name) {
     throw new Error("Error checking if participant exists");
   }
 }
+

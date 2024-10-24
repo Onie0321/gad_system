@@ -31,8 +31,14 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { fetchEvents, createEvent, checkDuplicateEvent  } from "../../../../lib/appwrite";
+import {
+  fetchEvents,
+  createEvent,
+  checkDuplicateEvent,
+  fetchParticipants,
+} from "../../../../lib/appwrite";
 import AddParticipantDialog from "./add-participant-dialog/page";
+import ParticipantsList from "./participants-dialog/page"; // Import your new ParticipantsDialog
 import EditEventDialog from "./edit-event-dialog/page";
 import EditParticipantDialog from "./edit-participant-dialog/page";
 import ExportData from "./export-data/page";
@@ -40,9 +46,8 @@ import RefreshButton from "./refresh-button/page";
 import ImportData from "./import-data/page";
 import { parse } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'; // Import the toast styles
-
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css"; // Import the toast styles
 
 export default function PastEvents() {
   const [events, setEvents] = useState([]);
@@ -57,6 +62,8 @@ export default function PastEvents() {
   const [error, setError] = useState(null);
   const [showAddParticipant, setShowAddParticipant] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDemographicDialog, setShowDemographicDialog] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
 
   const tableRef = useRef(null);
 
@@ -117,7 +124,15 @@ export default function PastEvents() {
     return matchesSearch && matchesFilter;
   });
 
-  
+  const handleShowParticipants = async (event) => {
+    try {
+      const participants = await fetchParticipants(event.id); // Use the new fetchParticipants function
+      setSelectedEvent({ ...event, participants }); // Update selected event with participants
+      setShowParticipants(true); // Show participants dialog or list
+    } catch (error) {
+      console.error("Error fetching participants:", error);
+    }
+  };
 
   const handleImportData = async (importedData) => {
     const parseDateTime = (dateTimeStr) => {
@@ -131,9 +146,9 @@ export default function PastEvents() {
         "yyyy-MM-dd HH:mm", // ISO-like format without timezone
         "yyyy-MM-dd", // e.g. 2024-02-23
       ];
-  
+
       let parsedDate = null;
-  
+
       for (let format of formats) {
         try {
           parsedDate = parse(dateTimeStr, format, new Date(), { locale: enUS });
@@ -144,78 +159,86 @@ export default function PastEvents() {
           continue; // If parsing fails, move to the next format
         }
       }
-  
+
       // Fallback: Try native Date constructor for flexible parsing
       const nativeDate = new Date(dateTimeStr);
       if (!isNaN(nativeDate.getTime())) {
         return nativeDate.toISOString(); // Return ISO string if valid
       }
-  
+
       return null; // If no valid date format found, return null
     };
-  
+
     const nonDuplicateEvents = []; // Store non-duplicate events for the UI update
     let skippedDuplicates = 0;
     let invalidEntries = 0;
-  
+
     for (const item of importedData) {
       // Safely attempt to parse the event date and time
       const parsedEventDate = parseDateTime(item.Date);
       const parsedTimeFrom = item.EventTimeFrom;
       const parsedTimeTo = item.EventTimeTo;
-  
+
       if (!item["Event Name"] || !parsedEventDate) {
-        toast.error(`Invalid data in the row. Event Name or Date is missing for: ${item["Event Name"] || 'Unknown Event'}`);
+        toast.error(
+          `Invalid data in the row. Event Name or Date is missing for: ${
+            item["Event Name"] || "Unknown Event"
+          }`
+        );
         invalidEntries++;
         continue; // Skip the invalid entry
       }
-  
+
       const event = {
         id: `imported-${item["Event Name"] || index}`, // Unique ID for each event
-        eventName: item["Event Name"] || 'Unnamed Event',
+        eventName: item["Event Name"] || "Unnamed Event",
         eventDate: parsedEventDate || new Date().toISOString(), // Default to current time if parsing fails
-        eventTimeFrom: parsedTimeFrom || 'Unknown',
-        eventTimeTo: parsedTimeTo || 'Unknown',
-        eventVenue: item.Venue || 'Unknown Venue',
-        eventType: item.Type || 'General',
-        eventCategory: item.Category || 'Misc',
-        numberOfHours: item["Number of Hours"] || 'N/A',
+        eventTimeFrom: parsedTimeFrom || "Unknown",
+        eventTimeTo: parsedTimeTo || "Unknown",
+        eventVenue: item.Venue || "Unknown Venue",
+        eventType: item.Type || "General",
+        eventCategory: item.Category || "Misc",
+        numberOfHours: item["Number of Hours"] || "N/A",
         participants: [],
       };
-  
+
       try {
         // Check for duplicate event based on event name
         const isDuplicate = await checkDuplicateEvent(event);
         if (isDuplicate) {
-          toast.warning(`Duplicate event found: ${event.eventName}. Skipping creation.`);
+          toast.warning(
+            `Duplicate event found: ${event.eventName}. Skipping creation.`
+          );
           skippedDuplicates++;
           continue; // Skip creating duplicate event
         }
-  
+
         // If no duplicate found, create the event in Appwrite
         await createEvent(event);
-  
+
         // Add the non-duplicate event to the local array for UI update
         nonDuplicateEvents.push(event);
       } catch (error) {
         console.error(`Error processing event ${event.eventName}:`, error);
       }
     }
-  
+
     // Show success toast if any events were processed successfully
     if (nonDuplicateEvents.length > 0) {
-      toast.success(`${nonDuplicateEvents.length} events imported successfully.`);
+      toast.success(
+        `${nonDuplicateEvents.length} events imported successfully.`
+      );
     }
-  
+
     // Show a summary of skipped duplicates and invalid entries
     if (skippedDuplicates > 0) {
       toast.info(`${skippedDuplicates} duplicate events skipped.`);
     }
-  
+
     if (invalidEntries > 0) {
       toast.info(`${invalidEntries} invalid entries were skipped.`);
     }
-  
+
     // Update the local state with non-duplicate events only
     setEvents((prevEvents) => [...prevEvents, ...nonDuplicateEvents]);
   };
@@ -360,11 +383,31 @@ export default function PastEvents() {
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button
-                          onClick={() => setSelectedEvent(event)}
+                          onClick={async () => {
+                            if (event && event.$id) {
+                              // Ensure event and event.id are available
+                              setSelectedEvent(event); // Set the selected event
+                              try {
+                                const participants = await fetchParticipants(
+                                  event.$id
+                                ); // Fetch participants using event.id
+                                setSelectedEvent({ ...event, participants }); // Update the selectedEvent with participants data
+                                setShowParticipants(true); // Show the participants dialog
+                              } catch (error) {
+                                console.error(
+                                  "Failed to fetch participants:",
+                                  error
+                                );
+                              }
+                            } else {
+                              console.error("No eventId found for this event.");
+                            }
+                          }}
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <Users className="w-4 h-4" />
                         </Button>
+
                         <Button
                           onClick={() => {
                             // Implement demographic analysis functionality
@@ -382,6 +425,7 @@ export default function PastEvents() {
           </div>
         </div>
       </CardContent>
+      {selectedEvent && <ParticipantsList event={selectedEvent} />}
 
       <AddParticipantDialog
         open={showAddParticipant}
