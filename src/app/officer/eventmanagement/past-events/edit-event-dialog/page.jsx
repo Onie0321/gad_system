@@ -1,16 +1,26 @@
-import React from "react";
+'use client';
+
+import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createEvent } from "../../../../../lib/appwrite";
-import { getAcademicCategories } from "@/utils/categories";
+import { createEvent } from "@/lib/appwrite";
+import { getAcademicCategories, getNonAcademicCategories } from "@/utils/categories";
 
 export default function EditEventDialog({ event, onOpenChange, onUpdateEvent }) {
-  const [editingEvent, setEditingEvent] = React.useState(event);
+  const [editingEvent, setEditingEvent] = useState(null);
+
+  useEffect(() => {
+    if (event) {
+      setEditingEvent(event);
+    }
+  }, [event]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!editingEvent) return;
+
     try {
       await createEvent(editingEvent);
       onUpdateEvent();
@@ -20,7 +30,7 @@ export default function EditEventDialog({ event, onOpenChange, onUpdateEvent }) 
     }
   };
 
-  if (!event) return null;
+  if (!editingEvent) return null;
 
   return (
     <Dialog open={!!event} onOpenChange={onOpenChange}>
@@ -28,39 +38,34 @@ export default function EditEventDialog({ event, onOpenChange, onUpdateEvent }) 
         <DialogHeader>
           <DialogTitle>Edit Event</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             value={editingEvent.eventName}
             onChange={(e) => setEditingEvent({ ...editingEvent, eventName: e.target.value })}
             placeholder="Enter Event Name"
-            className="mb-2"
           />
           <Input
             type="date"
             value={editingEvent.eventDate.split("T")[0]}
             onChange={(e) => setEditingEvent({ ...editingEvent, eventDate: e.target.value })}
             placeholder="Select Event Date"
-            className="mb-2"
           />
           <Input
             type="time"
             value={editingEvent.eventTimeFrom}
             onChange={(e) => setEditingEvent({ ...editingEvent, eventTimeFrom: e.target.value })}
             placeholder="Event Time From"
-            className="mb-2"
           />
           <Input
             type="time"
             value={editingEvent.eventTimeTo}
             onChange={(e) => setEditingEvent({ ...editingEvent, eventTimeTo: e.target.value })}
             placeholder="Event Time To"
-            className="mb-2"
           />
           <Input
             value={editingEvent.eventVenue}
             onChange={(e) => setEditingEvent({ ...editingEvent, eventVenue: e.target.value })}
             placeholder="Enter Event Venue"
-            className="mb-2"
           />
           <Select
             value={editingEvent.eventType}
@@ -88,7 +93,7 @@ export default function EditEventDialog({ event, onOpenChange, onUpdateEvent }) 
                       {category}
                     </SelectItem>
                   ))
-                : ["Sports", "Cultural", "Social", "Other"].map((category) => (
+                : getNonAcademicCategories().map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
                     </SelectItem>
@@ -100,7 +105,6 @@ export default function EditEventDialog({ event, onOpenChange, onUpdateEvent }) 
             value={editingEvent.numberOfHours}
             readOnly
             placeholder="Number of Hours"
-            className="mb-2"
           />
           <Button type="submit">Update Event</Button>
         </form>

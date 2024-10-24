@@ -16,6 +16,8 @@ import {
   Cell,
 } from "recharts";
 import { Users } from "lucide-react";
+import { databases, appwriteConfig } from "../../../../lib/appwrite"; 
+
 
 const COLORS = [
   "#0088FE",
@@ -40,27 +42,34 @@ export default function DemographicAnalysis({ selectedEventId }) {
     }
   }, [selectedEventId]);
 
+  // Fetch event data from Appwrite
   const fetchEventData = async (eventId) => {
     try {
-      const response = await fetch(`/api/addEvents/${eventId}`);
-      if (!response.ok) throw new Error("Failed to fetch event data");
-      const data = await response.json();
-      setEventData(data);
-      processParticipantData(data.participants);
+      // Fetch the event document from Appwrite
+      const response = await databases.getDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.eventCollectionId,
+        eventId
+      );
+
+      if (!response) throw new Error("Failed to fetch event data");
+      setEventData(response); // Set event data
+      processParticipantData(response.participants || []); // Process participants data
     } catch (error) {
       console.error("Error fetching event data:", error);
     }
   };
 
+  // Process participant data to gather demographic insights
   const processParticipantData = (participants) => {
-    const genderCount = {};
+    const sexCount = {};
     const ageGroups = {};
     const departmentCount = {};
     const ethnicCount = {};
 
     participants.forEach((participant) => {
-      // Gender
-      genderCount[participant.sex] = (genderCount[participant.sex] || 0) + 1;
+      // Sex
+      sexCount[participant.sex] = (sexCount[participant.sex] || 0) + 1;
 
       // Age
       const ageGroup = getAgeGroup(participant.age);
@@ -78,12 +87,14 @@ export default function DemographicAnalysis({ selectedEventId }) {
       ethnicCount[ethnicGroup] = (ethnicCount[ethnicGroup] || 0) + 1;
     });
 
-    setDemographicData(genderCount);
+    // Set the aggregated data
+    setDemographicData(sexCount);
     setAgeData(ageGroups);
     setDepartmentData(departmentCount);
     setEthnicData(ethnicCount);
   };
 
+  // Helper function to categorize age groups
   const getAgeGroup = (age) => {
     if (age < 18) return "Under 18";
     if (age < 25) return "18-24";
@@ -92,6 +103,7 @@ export default function DemographicAnalysis({ selectedEventId }) {
     return "45+";
   };
 
+  // Formatting data for chart visualization
   const formatChartData = (data) => {
     return Object.entries(data).map(([name, value]) => ({ name, value }));
   };
@@ -108,7 +120,7 @@ export default function DemographicAnalysis({ selectedEventId }) {
         <div className="space-y-6">
           <div>
             <h3 className="text-xl font-semibold mb-2 text-green-300">
-              Gender Distribution
+              Sex Distribution
             </h3>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>

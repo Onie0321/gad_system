@@ -50,8 +50,6 @@ export default function SignUpPage() {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [adminCode, setAdminCode] = useState("");
-  const [showAdminCodeField, setShowAdminCodeField] = useState(false);
 
   useEffect(() => {
     setPasswordStrength(calculatePasswordStrength(password));
@@ -113,7 +111,6 @@ export default function SignUpPage() {
         email,
         password,
         name,
-        showAdminCodeField ? "admin" : "user"
       );
       if (newUser) {
         toast.success("Account created successfully!");
@@ -121,8 +118,6 @@ export default function SignUpPage() {
         setName("");
         setEmail("");
         setPassword("");
-        setAdminCode("");
-        setShowAdminCodeField(false);
         setAgreeToTerms(false);
         setRememberDevice(false);
         setEmailError("");
@@ -167,6 +162,7 @@ export default function SignUpPage() {
                 <Input
                   id="name"
                   type="text"
+                  placeholder="Enter your Full Name"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -178,6 +174,7 @@ export default function SignUpPage() {
                 <Input
                   id="email"
                   type="email"
+                  placeholder="Enter your Ascot email"
                   required
                   value={email}
                   onChange={handleEmailChange}
@@ -192,6 +189,7 @@ export default function SignUpPage() {
                 <div className="relative">
                   <Input
                     id="password"
+                    placeholder="Enter your Password"
                     type={showPassword ? "text" : "password"}
                     required
                     value={password}
@@ -230,31 +228,6 @@ export default function SignUpPage() {
                 Remember this device
               </label>
             </div>
-
-            <div className="flex items-center">
-              <Checkbox
-                id="adminCode"
-                checked={showAdminCodeField}
-                onCheckedChange={(checked) => setShowAdminCodeField(checked)}
-              />
-              <label
-                htmlFor="adminCode"
-                className="ml-2 block text-sm text-gray-300"
-              >
-                I have a code
-              </label>
-            </div>
-            {showAdminCodeField && (
-              <div>
-                <Input
-                  id="adminCodeInput"
-                  type="text"
-                  value={adminCode}
-                  onChange={(e) => setAdminCode(e.target.value)}
-                  className="bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            )}
 
             <Button
               type="submit"
@@ -332,7 +305,7 @@ export default function SignUpPage() {
         className="flex flex-1 flex-col items-center justify-center bg-gray-900 p-8"
       >
        <div className="w-full max-w-md">
-        <h4 className="text-xl font-bold text-center text-gray-200 mb-4">
+        <h4 className="text-xl font-bold text-center text-yellow-200 mb-4">
           Aurora State College of Technology
         </h4>
         <h1 className="text-4xl font-bold text-center text-gray-200 mb-4">
@@ -341,15 +314,15 @@ Gender and Development         </h1>
           <img
             src="/logo/gad.png"
             alt="GAD Nexus Logo"
-            width={320}
-            height={320}
+            width={270}
+            height={270}
             className="object-contain"
           />
           <img
             src="/logo/ascot.png"
             alt="ASCOT Logo"
-            width={320}
-            height={320}
+            width={270}
+            height={270}
             className="object-contain"
           />
         </div>

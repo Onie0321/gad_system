@@ -14,6 +14,7 @@ import {
   MapPin,
   Eye,
   ChevronDown,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -41,6 +42,18 @@ export default function ScrollableLandingPage() {
   const [activeSection, setActiveSection] = useState("home");
   const [currentColorIndex, setCurrentColorIndex] = useState(0);
   const sectionRefs = useRef({});
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchOption, setSearchOption] = useState('all')
+  const [searchOrder, setSearchOrder] = useState('newest')
+  const [searchCategory, setSearchCategory] = useState('all')
+  const [showResults, setShowResults] = useState(false)
+
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    // Implement search logic here
+    console.log('Searching for:', searchQuery, searchOption, searchOrder, searchCategory)
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -87,6 +100,8 @@ export default function ScrollableLandingPage() {
     setIsMenuOpen(false);
   };
 
+  
+
   return (
     <div
       className={`min-h-screen flex flex-col bg-gradient-to-r ${currentGradient} transition-colors duration-1000`}
@@ -96,9 +111,87 @@ export default function ScrollableLandingPage() {
           <Link href="/" className="flex items-center space-x-2">
             <img src="/logo/gad.png" alt="Logo" className="w-8 h-8" />
             <span className="text-2xl font-bold text-white drop-shadow-md">
-              G&D Initiative
+              Gender and Development
             </span>
           </Link>
+
+          <form onSubmit={handleSearch} className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search..."
+              className="w-full bg-white bg-opacity-20 text-white-100 border-2 border-blue focus:border-purple-500 rounded-full pl-12 py-2  transition-all duration-300"
+            />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white" />
+          </form>
+
+          <AnimatePresence>
+        {showResults && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="fixed top-24 left-0 right-0 bg-black bg-opacity-80 text-white p-4 z-40"
+          >
+            <div className="container mx-auto">
+              <h2 className="text-2xl font-bold mb-4">Search Results</h2>
+              <p className="mb-6">Total: 0 results found.</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Search for:</h3>
+                  <ul className="space-y-2">
+                    <li>
+                      <label className="flex items-center">
+                        <input type="radio" name="searchType" className="mr-2" defaultChecked />
+                        All words
+                      </label>
+                    </li>
+                    <li>
+                      <label className="flex items-center">
+                        <input type="radio" name="searchType" className="mr-2" />
+                        Any words
+                      </label>
+                    </li>
+                    <li>
+                      <label className="flex items-center">
+                        <input type="radio" name="searchType" className="mr-2" />
+                        Exact Phrase
+                      </label>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Ordering:</h3>
+                  <ul className="space-y-2">
+                    <li>
+                      <label className="flex items-center">
+                        <input type="radio" name="ordering" className="mr-2" defaultChecked />
+                        Newest First
+                      </label>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Search Only In:</h3>
+                  <ul className="space-y-2">
+                    {['Comments', 'Categories', 'Contacts', 'Articles', 'News Feeds', 'Web Links', 'Tags'].map((category) => (
+                      <li key={category}>
+                        <label className="flex items-center">
+                          <input type="checkbox" className="mr-2" />
+                          {category}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
           <nav className="hidden md:flex space-x-4">
             {["Home", "About", "Archive", "Services", "News", "Contact"].map(
               (item) => (

@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
-import DemographicAnalysis from "../demographic-analysis/page";
-import { motion, AnimatePresence } from "framer-motion";
+"use client";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,40 +25,24 @@ import {
   Search,
   Download,
   Edit,
-  Trash2,
   Users,
   ChartColumnBig,
   RefreshCw,
   PlusCircle,
-  X,
 } from "lucide-react";
+import { motion } from "framer-motion";
+import { fetchEvents, createEvent, checkDuplicateEvent  } from "../../../../lib/appwrite";
+import AddParticipantDialog from "./add-participant-dialog/page";
+import EditEventDialog from "./edit-event-dialog/page";
+import EditParticipantDialog from "./edit-participant-dialog/page";
+import ExportData from "./export-data/page";
+import RefreshButton from "./refresh-button/page";
+import ImportData from "./import-data/page";
+import { parse } from "date-fns";
+import { enUS } from "date-fns/locale";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css'; // Import the toast styles
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  createEvent,
-  addParticipantToEvent,
-  checkDuplicateEvent,
-  fetchEvents,
-} from "../../../../lib/appwrite";
-import { getAcademicCategories } from "@/utils/categories";
 
 export default function PastEvents() {
   const [events, setEvents] = useState([]);
@@ -72,44 +55,19 @@ export default function PastEvents() {
   const [editingParticipant, setEditingParticipant] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showParticipants, setShowParticipants] = useState(false);
-  const [participantSortColumn, setParticipantSortColumn] = useState("name");
-  const [participantSortDirection, setParticipantSortDirection] =
-    useState("asc");
-  const [participantSearchTerm, setParticipantSearchTerm] = useState("");
-  const [showDemographicAnalysis, setShowDemographicAnalysis] = useState(false);
   const [showAddParticipant, setShowAddParticipant] = useState(false);
-  const [participantAdded, setParticipantAdded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [newParticipant, setNewParticipant] = useState({
-    name: "",
-    sex: "",
-    age: "",
-    department: "",
-    year: "",
-    section: "",
-    ethnicGroup: "",
-  });
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await handleFetchEvents();
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+  const tableRef = useRef(null);
 
   useEffect(() => {
     handleFetchEvents();
   }, []);
 
   const handleFetchEvents = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
-      setError(null);
-
       const data = await fetchEvents();
       setEvents(data);
     } catch (error) {
@@ -122,7 +80,14 @@ export default function PastEvents() {
     }
   };
 
-  const departmentOptions = getAcademicCategories();
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await handleFetchEvents();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const sortEvents = (column) => {
     if (column === sortColumn) {
@@ -141,135 +106,128 @@ export default function PastEvents() {
     setEvents(sortedEvents);
   };
 
-  const sortParticipants = (column) => {
-    if (column === participantSortColumn) {
-      setParticipantSortDirection(
-        participantSortDirection === "asc" ? "desc" : "asc"
-      );
-    } else {
-      setParticipantSortColumn(column);
-      setParticipantSortDirection("asc");
-    }
-
-    const sortedParticipants = [...selectedEvent.participants].sort((a, b) => {
-      if (a[column] < b[column])
-        return participantSortDirection === "asc" ? -1 : 1;
-      if (a[column] > b[column])
-        return participantSortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    setSelectedEvent({ ...selectedEvent, participants: sortedParticipants });
-  };
-
-  const exportEventData = () => {
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      "Event Name,Date,Time,Venue,Type,Category,Number of Hours,Participants\n" +
-      events
-        .map(
-          (event) =>
-            `"${event.eventName}","${event.eventDate}","${event.eventTime}","${event.eventVenue}","${event.eventType}","${event.eventCategory}","${event.numberOfHours}","${event.participants.length}"`
-        )
-        .join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "event_data.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const updateEvent = async (event) => {
-    try {
-      await createEvent(event); // Assuming `createEvent` updates the event
-      await handleFetchEvents();
-      setEditingEvent(null);
-    } catch (error) {
-      console.error("Error updating event:", error);
-      setError(`Failed to update event: ${error.message}`);
-    }
-  };
-
-  const updateParticipant = async (updatedParticipant) => {
-    try {
-      await addParticipantToEvent(updatedParticipant); // Update participant API
-      await handleFetchEvents();
-      setEditingParticipant(null);
-    } catch (error) {
-      console.error("Error updating participant:", error);
-      setError(`Failed to update participant: ${error.message}`);
-    }
-  };
-
-  const addParticipant = async (eventId) => {
-    try {
-      await addParticipantToEvent(eventId, newParticipant);
-      setSelectedEvent((prevEvent) => ({
-        ...prevEvent,
-        participants: [...prevEvent.participants, newParticipant],
-      }));
-      setShowAddParticipant(false);
-      setNewParticipant({
-        name: "",
-        sex: "",
-        age: "",
-        department: "",
-        year: "",
-        section: "",
-        ethnicGroup: "",
-      });
-      await handleFetchEvents();
-    } catch (error) {
-      console.error("Error adding participant:", error);
-      setError(`Failed to add participant: ${error.message}`);
-    }
-  };
-
-  const getParticipantCount = (event) => {
-    return event.participants ? event.participants.length : 0;
-  };
-
   const filteredEvents = events.filter((event) => {
-    const matchesSearch = event.eventName
+    const eventName = event.eventName || ""; // Fallback to empty string if eventName is undefined
+    const matchesSearch = eventName
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
+
     const matchesFilter =
       filterType === "all" || event.eventType === filterType;
     return matchesSearch && matchesFilter;
   });
 
-  const filteredParticipants = selectedEvent?.participants.filter(
-    (participant) =>
-      participant.name &&
-      participant.name
-        .toLowerCase()
-        .includes(participantSearchTerm.toLowerCase())
-  );
+  
+
+  const handleImportData = async (importedData) => {
+    const parseDateTime = (dateTimeStr) => {
+      const formats = [
+        "MM/dd/yyyy", // e.g. 02/23/2024
+        "MMM/dd/yyyy", // e.g. Feb/23/2024
+        "MMMM d, yyyy", // e.g. February 23, 2024
+        "MM/dd/yyyy HH:mm", // e.g. 02/23/2024 14:30
+        "h:mm a", // e.g. 2:30 PM
+        "HH:mm", // e.g. 14:30
+        "yyyy-MM-dd HH:mm", // ISO-like format without timezone
+        "yyyy-MM-dd", // e.g. 2024-02-23
+      ];
+  
+      let parsedDate = null;
+  
+      for (let format of formats) {
+        try {
+          parsedDate = parse(dateTimeStr, format, new Date(), { locale: enUS });
+          if (!isNaN(parsedDate)) {
+            return parsedDate.toISOString(); // If valid, return ISO string
+          }
+        } catch (e) {
+          continue; // If parsing fails, move to the next format
+        }
+      }
+  
+      // Fallback: Try native Date constructor for flexible parsing
+      const nativeDate = new Date(dateTimeStr);
+      if (!isNaN(nativeDate.getTime())) {
+        return nativeDate.toISOString(); // Return ISO string if valid
+      }
+  
+      return null; // If no valid date format found, return null
+    };
+  
+    const nonDuplicateEvents = []; // Store non-duplicate events for the UI update
+    let skippedDuplicates = 0;
+    let invalidEntries = 0;
+  
+    for (const item of importedData) {
+      // Safely attempt to parse the event date and time
+      const parsedEventDate = parseDateTime(item.Date);
+      const parsedTimeFrom = item.EventTimeFrom;
+      const parsedTimeTo = item.EventTimeTo;
+  
+      if (!item["Event Name"] || !parsedEventDate) {
+        toast.error(`Invalid data in the row. Event Name or Date is missing for: ${item["Event Name"] || 'Unknown Event'}`);
+        invalidEntries++;
+        continue; // Skip the invalid entry
+      }
+  
+      const event = {
+        id: `imported-${item["Event Name"] || index}`, // Unique ID for each event
+        eventName: item["Event Name"] || 'Unnamed Event',
+        eventDate: parsedEventDate || new Date().toISOString(), // Default to current time if parsing fails
+        eventTimeFrom: parsedTimeFrom || 'Unknown',
+        eventTimeTo: parsedTimeTo || 'Unknown',
+        eventVenue: item.Venue || 'Unknown Venue',
+        eventType: item.Type || 'General',
+        eventCategory: item.Category || 'Misc',
+        numberOfHours: item["Number of Hours"] || 'N/A',
+        participants: [],
+      };
+  
+      try {
+        // Check for duplicate event based on event name
+        const isDuplicate = await checkDuplicateEvent(event);
+        if (isDuplicate) {
+          toast.warning(`Duplicate event found: ${event.eventName}. Skipping creation.`);
+          skippedDuplicates++;
+          continue; // Skip creating duplicate event
+        }
+  
+        // If no duplicate found, create the event in Appwrite
+        await createEvent(event);
+  
+        // Add the non-duplicate event to the local array for UI update
+        nonDuplicateEvents.push(event);
+      } catch (error) {
+        console.error(`Error processing event ${event.eventName}:`, error);
+      }
+    }
+  
+    // Show success toast if any events were processed successfully
+    if (nonDuplicateEvents.length > 0) {
+      toast.success(`${nonDuplicateEvents.length} events imported successfully.`);
+    }
+  
+    // Show a summary of skipped duplicates and invalid entries
+    if (skippedDuplicates > 0) {
+      toast.info(`${skippedDuplicates} duplicate events skipped.`);
+    }
+  
+    if (invalidEntries > 0) {
+      toast.info(`${invalidEntries} invalid entries were skipped.`);
+    }
+  
+    // Update the local state with non-duplicate events only
+    setEvents((prevEvents) => [...prevEvents, ...nonDuplicateEvents]);
+  };
 
   return (
     <Card className="w-full bg-gray-800 border-2 border-pink-500 rounded-xl overflow-hidden">
-<CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl font-bold text-pink-400">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-2xl font-bold text-pink-400">
           <Calendar className="inline-block mr-2" />
           Past Events
         </CardTitle>
-        <Button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          <motion.div
-            animate={{ rotate: isRefreshing ? 360 : 0 }}
-            transition={{ duration: 1, ease: "linear", repeat: isRefreshing ? Infinity : 0 }}
-            className="mr-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </motion.div>
-          {isRefreshing ? "Refreshing..." : "Refresh"}
-        </Button>
+        <RefreshButton onClick={handleRefresh} isRefreshing={isRefreshing} />
       </CardHeader>
       <CardContent>
         <div className="flex justify-between mb-4">
@@ -290,541 +248,159 @@ export default function PastEvents() {
               <SelectItem value="Non-Academic">Non-Academic</SelectItem>
             </SelectContent>
           </Select>
-          <Button
-            onClick={exportEventData}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export Data
-          </Button>
+          <ExportData events={events} />
+          <ImportData onImport={handleImportData} />
         </div>
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead
-                  className="cursor-pointer text-pink-300"
-                  onClick={() => sortEvents("eventName")}
-                >
-                  Name{" "}
-                  {sortColumn === "eventName" &&
-                    (sortDirection === "asc" ? (
-                      <ChevronUp className="inline w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="inline w-4 h-4" />
-                    ))}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-pink-300"
-                  onClick={() => sortEvents("eventDate")}
-                >
-                  Date{" "}
-                  {sortColumn === "eventDate" &&
-                    (sortDirection === "asc" ? (
-                      <ChevronUp className="inline w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="inline w-4 h-4" />
-                    ))}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-pink-300"
-                  onClick={() => sortEvents("eventType")}
-                >
-                  Type{" "}
-                  {sortColumn === "eventType" &&
-                    (sortDirection === "asc" ? (
-                      <ChevronUp className="inline w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="inline w-4 h-4" />
-                    ))}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-pink-300"
-                  onClick={() => sortEvents("eventCategory")}
-                >
-                  Category{" "}
-                  {sortColumn === "eventCategory" &&
-                    (sortDirection === "asc" ? (
-                      <ChevronUp className="inline w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="inline w-4 h-4" />
-                    ))}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-pink-300"
-                  onClick={() => sortEvents("participants")}
-                >
-                  Size{" "}
-                  {sortColumn === "participants" &&
-                    (sortDirection === "asc" ? (
-                      <ChevronUp className="inline w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="inline w-4 h-4" />
-                    ))}
-                </TableHead>
-                <TableHead className="text-pink-300 text-center">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEvents.map((event) => (
-                <TableRow key={event.id} className="hover:bg-gray-700">
-                  <TableCell className="text-white">
-                    {event.eventName}
-                  </TableCell>
-                  <TableCell className="text-white">
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {new Date(event.eventDate).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-white">
-                    {event.eventType}
-                  </TableCell>
-                  <TableCell className="text-white">
-                    {event.eventCategory}
-                  </TableCell>
-                  <TableCell className="text-white">
-                    {getParticipantCount(event)}
-                  </TableCell>
-                  <TableCell className="text-white">
-                    <div className="flex space-x-2 justify-center">
-                      <Button
-                        onClick={() => {
-                          setSelectedEvent(event);
-                          setShowAddParticipant(true);
-                        }}
-                        className="bg-purple-600 hover:bg-purple-700"
-                      >
-                        <PlusCircle className="w-4 h-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button className="bg-yellow-600 hover:bg-yellow-700">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Edit Event</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to edit this event?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => setEditingEvent(event)}
-                            >
-                              Continue
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-
-                      <Button
-                        onClick={() => {
-                          setSelectedEvent(event);
-                          setShowParticipants(!showParticipants);
-                        }}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <Users className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setSelectedEvent(event);
-                          setShowDemographicAnalysis(true);
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        <ChartColumnBig className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          <div ref={tableRef} className="max-h-[400px] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead
+                    className="cursor-pointer text-pink-300 sticky top-0 bg-gray-800"
+                    onClick={() => sortEvents("eventName")}
+                  >
+                    Name{" "}
+                    {sortColumn === "eventName" &&
+                      (sortDirection === "asc" ? (
+                        <ChevronUp className="inline w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="inline w-4 h-4" />
+                      ))}
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer text-pink-300 sticky top-0 bg-gray-800"
+                    onClick={() => sortEvents("eventDate")}
+                  >
+                    Date{" "}
+                    {sortColumn === "eventDate" &&
+                      (sortDirection === "asc" ? (
+                        <ChevronUp className="inline w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="inline w-4 h-4" />
+                      ))}
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer text-pink-300 sticky top-0 bg-gray-800"
+                    onClick={() => sortEvents("eventType")}
+                  >
+                    Type{" "}
+                    {sortColumn === "eventType" &&
+                      (sortDirection === "asc" ? (
+                        <ChevronUp className="inline w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="inline w-4 h-4" />
+                      ))}
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer text-pink-300 sticky top-0 bg-gray-800"
+                    onClick={() => sortEvents("eventCategory")}
+                  >
+                    Category{" "}
+                    {sortColumn === "eventCategory" &&
+                      (sortDirection === "asc" ? (
+                        <ChevronUp className="inline w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="inline w-4 h-4" />
+                      ))}
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer text-pink-300 sticky top-0 bg-gray-800"
+                    onClick={() => sortEvents("participants")}
+                  >
+                    Number of Participant{" "}
+                    {sortColumn === "participants" &&
+                      (sortDirection === "asc" ? (
+                        <ChevronUp className="inline w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="inline w-4 h-4" />
+                      ))}
+                  </TableHead>
+                  <TableHead className="text-pink-300 text-center">
+                    Actions
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredEvents.map((event) => (
+                  <TableRow key={event.id} className="hover:bg-gray-700">
+                    <TableCell className="text-white">
+                      {event.eventName}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {new Date(event.eventDate).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {event.eventType}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {event.eventCategory}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {event.participants?.length || 0}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      <div className="flex space-x-2 justify-center">
+                        <Button
+                          onClick={() => {
+                            setSelectedEvent(event);
+                            setShowAddParticipant(true);
+                          }}
+                          className="bg-purple-600 hover:bg-purple-700"
+                        >
+                          <PlusCircle className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => setEditingEvent(event)}
+                          className="bg-yellow-600 hover:bg-yellow-700"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => setSelectedEvent(event)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Users className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            // Implement demographic analysis functionality
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <ChartColumnBig className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </CardContent>
 
-      {editingEvent && (
-        <Dialog
-          open={!!editingEvent}
-          onOpenChange={() => setEditingEvent(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Event</DialogTitle>
-            </DialogHeader>
-            <div className="mb-4">
-              Participants: {editingEvent?.participants?.length || 0}
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateEvent(editingEvent);
-              }}
-            >
-              <Input
-                value={editingEvent?.eventName}
-                onChange={(e) =>
-                  setEditingEvent({
-                    ...editingEvent,
-                    eventName: e.target.value,
-                  })
-                }
-                placeholder="Enter Event Name"
-                className="mb-2"
-              />
-              <Input
-                type="date"
-                value={editingEvent?.eventDate.split("T")[0]}
-                onChange={(e) =>
-                  setEditingEvent({
-                    ...editingEvent,
-                    eventDate: e.target.value,
-                  })
-                }
-                placeholder="Select Event Date"
-                className="mb-2"
-              />
-              <Input
-                type="time"
-                value={editingEvent?.eventTimeFrom}
-                onChange={(e) =>
-                  setEditingEvent({
-                    ...editingEvent,
-                    eventTimeFrom: e.target.value,
-                  })
-                }
-                placeholder="Event Time From"
-                className="mb-2"
-              />
-              <Input
-                type="time"
-                value={editingEvent?.eventTimeTo}
-                onChange={(e) =>
-                  setEditingEvent({
-                    ...editingEvent,
-                    eventTimeTo: e.target.value,
-                  })
-                }
-                placeholder="Event Time To"
-                className="mb-2"
-              />
-              <Input
-                value={editingEvent?.eventVenue}
-                onChange={(e) =>
-                  setEditingEvent({
-                    ...editingEvent,
-                    eventVenue: e.target.value,
-                  })
-                }
-                placeholder="Enter Event Venue"
-                className="mb-2"
-              />
-              <Select
-                value={editingEvent?.eventType}
-                onValueChange={(value) =>
-                  setEditingEvent({
-                    ...editingEvent,
-                    eventType: value,
-                    eventCategory: "", // Reset category when type changes
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Event Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Academic">Academic</SelectItem>
-                  <SelectItem value="Non-Academic">Non-Academic</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                value={editingEvent?.eventCategory}
-                onValueChange={(value) =>
-                  setEditingEvent({
-                    ...editingEvent,
-                    eventCategory: value,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Event Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {editingEvent?.eventType === "Academic"
-                    ? getAcademicCategories().map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))
-                    : [
-                        "Sports",
-                        "Cultural",
-                        "Social",
-                        "Other",
-                      ].map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
-              <Input
-                type="number"
-                value={editingEvent?.numberOfHours}
-                readOnly
-                placeholder="Number of Hours"
-                className="mb-2"
-              />
-              <Button type="submit">Update Event</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      )}
+      <AddParticipantDialog
+        open={showAddParticipant}
+        onOpenChange={setShowAddParticipant}
+        event={selectedEvent}
+        onAddParticipant={handleFetchEvents}
+      />
 
+      <EditEventDialog
+        event={editingEvent}
+        onOpenChange={() => setEditingEvent(null)}
+        onUpdateEvent={handleFetchEvents}
+      />
 
-      {editingParticipant && (
-        <Dialog
-          open={!!editingParticipant}
-          onOpenChange={() => setEditingParticipant(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Participant</DialogTitle>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateParticipant(editingParticipant);
-              }}
-            >
-              <Input
-                value={editingParticipant?.name}
-                onChange={(e) =>
-                  setEditingParticipant({
-                    ...editingParticipant,
-                    name: e.target.value,
-                  })
-                }
-                placeholder="Name"
-                className="mb-2"
-              />
-              <Select
-                value={editingParticipant?.sex}
-                onValueChange={(value) =>
-                  setEditingParticipant({
-                    ...editingParticipant,
-                    sex: value,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sex" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                type="number"
-                value={editingParticipant?.age}
-                onChange={(e) =>
-                  setEditingParticipant({
-                    ...editingParticipant,
-                    age: e.target.value,
-                  })
-                }
-                placeholder="Age"
-                className="mb-2"
-              />
-              <Input
-                value={editingParticipant?.department}
-                onChange={(e) =>
-                  setEditingParticipant({
-                    ...editingParticipant,
-                    school: e.target.value,
-                  })
-                }
-                placeholder="School"
-                className="mb-2"
-              />
-              <Input
-                value={editingParticipant?.year}
-                onChange={(e) =>
-                  setEditingParticipant({
-                    ...editingParticipant,
-                    year: e.target.value,
-                  })
-                }
-                placeholder="Year"
-                className="mb-2"
-              />
-              <Input
-                value={editingParticipant?.section}
-                onChange={(e) =>
-                  setEditingParticipant({
-                    ...editingParticipant,
-                    section: e.target.value,
-                  })
-                }
-                placeholder="Section"
-                className="mb-2"
-              />
-              <Input
-                value={editingParticipant?.ethnicGroup}
-                onChange={(e) =>
-                  setEditingParticipant({
-                    ...editingParticipant,
-                    ethnicGroup: e.target.value,
-                  })
-                }
-                placeholder="Ethnic Group"
-                className="mb-2"
-              />
-              <Button type="submit">Update Participant</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      )}
-
-<Dialog open={showAddParticipant} onOpenChange={setShowAddParticipant}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Participant</DialogTitle>
-          </DialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              addParticipant(selectedEvent.id);
-            }}
-          >
-            <Input
-              value={newParticipant.name}
-              onChange={(e) =>
-                setNewParticipant({ ...newParticipant, name: e.target.value })
-              }
-              placeholder="Name"
-              className="mb-2"
-            />
-            <Select
-              value={newParticipant.sex}
-              onValueChange={(value) =>
-                setNewParticipant({ ...newParticipant, sex: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sex" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Male">Male</SelectItem>
-                <SelectItem value="Female">Female</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              type="number"
-              value={newParticipant.age}
-              onChange={(e) =>
-                setNewParticipant({ ...newParticipant, age: e.target.value })
-              }
-              placeholder="Age"
-              className="mb-2"
-            />
-            <Select
-              value={newParticipant.department}
-              onValueChange={(value) =>
-                setNewParticipant({
-                  ...newParticipant,
-                  department: value,
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="School" />
-              </SelectTrigger>
-              <SelectContent>
-                {getAcademicCategories().map((school) => (
-                  <SelectItem key={school} value={school}>
-                    {school}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={newParticipant.year}
-              onValueChange={(value) =>
-                setNewParticipant({ ...newParticipant, year: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Year" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">1st Year</SelectItem>
-                <SelectItem value="2">2nd Year</SelectItem>
-                <SelectItem value="3">3rd Year</SelectItem>
-                <SelectItem value="4">4th Year</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              value={newParticipant.section}
-              onChange={(e) =>
-                setNewParticipant({
-                  ...newParticipant,
-                  section: e.target.value,
-                })
-              }
-              placeholder="Section"
-              className="mb-2"
-            />
-            <Select
-              value={newParticipant.ethnicGroup}
-              onValueChange={(value) =>
-                setNewParticipant({
-                  ...newParticipant,
-                  ethnicGroup: value,
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Ethnic Group" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Tagalog">Tagalog</SelectItem>
-                <SelectItem value="Cebuano">Cebuano</SelectItem>
-                <SelectItem value="Ilocano">Ilocano</SelectItem>
-                <SelectItem value="Bicolano">Bicolano</SelectItem>
-                <SelectItem value="Waray">Waray</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            {newParticipant.ethnicGroup === "Other" && (
-              <Input
-                value={newParticipant.otherEthnicGroup}
-                onChange={(e) =>
-                  setNewParticipant({
-                    ...newParticipant,
-                    otherEthnicGroup: e.target.value,
-                  })
-                }
-                placeholder="Specify Ethnic Group"
-                className="mt-2 mb-2"
-              />
-            )}
-            <DialogFooter>
-              <Button type="submit">
-                {participantAdded ? "Add Another Participant" : "Add Participant"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <EditParticipantDialog
+        participant={editingParticipant}
+        onOpenChange={() => setEditingParticipant(null)}
+        onUpdateParticipant={handleFetchEvents}
+      />
     </Card>
   );
 }

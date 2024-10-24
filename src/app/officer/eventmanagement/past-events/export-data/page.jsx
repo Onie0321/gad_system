@@ -6,11 +6,11 @@ export default function ExportData({ events }) {
   const exportEventData = () => {
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      "Event Name,Date,Time,Venue,Type,Category,Number of Hours,Participants\n" +
+      "Event Name,Date,EventTimeFrom,EventTimeTo,Venue,Type,Category,Number of Hours,Participants\n" +
       events
         .map(
           (event) =>
-            `"${event.eventName}","${event.eventDate}","${event.eventTime}","${event.eventVenue}","${event.eventType}","${event.eventCategory}","${event.numberOfHours}","${event.participants.length}"`
+            `"${event.eventName}","${event.eventDate}","${event.eventTimeFrom}","${event.eventTimeTo}","${event.eventVenue}","${event.eventType}","${event.eventCategory}","${event.numberOfHours}","${event.participants.length}"`
         )
         .join("\n");
 

@@ -13,22 +13,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Users, AlertTriangle } from "lucide-react";
 import { toast } from "react-toastify";
+import {
+  addParticipantToEvent,
+  checkIfParticipantExists,
+} from "../../../../lib/appwrite"; // Your Appwrite function for adding participants
 
 export default function AddParticipants({
   selectedEvent,
   newParticipant,
   setNewParticipant,
-  addParticipant,
   isAddingParticipants,
-  finishAddingParticipants,
+  setEvents,
+  setSelectedEvent,
+  setIsAddingParticipants,
+  handleAddParticipant,
 }) {
   const [hasAddedFirstParticipant, setHasAddedFirstParticipant] =
     useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedEvent) {
-      toast.error("No event selected. Please select an event first.");
+    handleAddParticipant();
+
+    if (!selectedEvent || !selectedEvent.$id) {
+      toast.error(
+        "No event found. Please add an event before adding participants."
+      );
       return;
     }
 
@@ -36,7 +46,7 @@ export default function AddParticipants({
       "name",
       "sex",
       "age",
-      "department",
+      "school",
       "year",
       "section",
       "ethnicGroup",
@@ -52,14 +62,81 @@ export default function AddParticipants({
       return;
     }
 
+    if (
+      newParticipant.ethnicGroup === "Other" &&
+      !newParticipant.otherEthnicGroup
+    ) {
+      toast.error("Please specify the other ethnic group");
+      return;
+    }
+
     try {
-      await addParticipant(newParticipant);
-      setHasAddedFirstParticipant(true); // Set the state to true after adding the first participant
+      // Check if the participant already exists before adding them
+      const isParticipantExists = await checkIfParticipantExists(
+        selectedEvent.$id,
+        newParticipant.name
+      );
+
+      if (isParticipantExists) {
+        toast.error(
+          "Participant with the same name already exists in this event."
+        );
+        return; // Exit early if the participant already exists
+      }
+
+      const updatedEvent = await addParticipantToEvent(
+        selectedEvent.$id, // Pass the event ID to the function
+        newParticipant
+      );
+      setSelectedEvent(updatedEvent);
+      setEvents((prevEvents) =>
+        prevEvents.map((event) =>
+          event.id === updatedEvent.id ? updatedEvent : event
+        )
+      );
+
+      // Clear the form after successfully adding a participant
+      setNewParticipant({
+        name: "",
+        sex: "",
+        age: "",
+        school: "",
+        year: "",
+        section: "",
+        ethnicGroup: "",
+        otherEthnicGroup: "",
+      });
+
+      setHasAddedFirstParticipant(true);
+      toast.success("Participant added successfully!");
     } catch (error) {
       console.error("Error adding participant:", error);
       toast.error(
         error.message || "Failed to add participant. Please try again."
       );
+    }
+  };
+
+  const finishAddingParticipants = () => {
+    if (selectedEvent) {
+      setEvents((prevEvents) =>
+        prevEvents.map((event) =>
+          event.$id === selectedEvent.$id ? selectedEvent : event
+        )
+      );
+
+      setIsAddingParticipants(false);
+      setNewParticipant({
+        name: "",
+        sex: "",
+        age: "",
+        school: "",
+        year: "",
+        section: "",
+        ethnicGroup: "",
+        otherEthnicGroup: "",
+      });
+      toast.success("Adding Participants Done");
     }
   };
 
@@ -89,12 +166,13 @@ export default function AddParticipants({
         </CardTitle>
         {selectedEvent && (
           <p className="text-blue-300 mt-2">
-            Adding participants to: {selectedEvent.eventName} Event
+            Adding participants to: {selectedEvent.eventName}
           </p>
         )}
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Participant Name */}
           <div className="space-y-2">
             <Label htmlFor="name" className="text-blue-400">
               Name
@@ -110,6 +188,7 @@ export default function AddParticipants({
             />
           </div>
 
+          {/* Participant Sex */}
           <div className="space-y-2">
             <Label htmlFor="sex" className="text-blue-400">
               Sex
@@ -129,11 +208,11 @@ export default function AddParticipants({
               <SelectContent>
                 <SelectItem value="Male">Male</SelectItem>
                 <SelectItem value="Female">Female</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
+          {/* Participant Age */}
           <div className="space-y-2">
             <Label htmlFor="age" className="text-blue-400">
               Age
@@ -154,30 +233,50 @@ export default function AddParticipants({
             />
           </div>
 
+          {/* Participant School */}
           <div className="space-y-2">
-            <Label htmlFor="department" className="text-blue-400">
-              Department
+            <Label htmlFor="school" className="text-blue-400">
+              School
             </Label>
             <Select
               onValueChange={(value) =>
-                setNewParticipant({ ...newParticipant, department: value })
+                setNewParticipant({ ...newParticipant, school: value })
               }
               disabled={!isAddingParticipants}
             >
               <SelectTrigger
-                id="department"
+                id="school"
                 className="bg-gray-700 border-blue-500 text-white"
               >
-                <SelectValue placeholder="Department" />
+                <SelectValue placeholder="School" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="IT">Information Technology</SelectItem>
-                <SelectItem value="F">Forestry</SelectItem>
-                <SelectItem value="E">Engineer</SelectItem>
+                <SelectItem value="ABM">
+                  School of Accountancy and Business Management
+                </SelectItem>
+                <SelectItem value="AS">
+                  School of Agricultural Science
+                </SelectItem>
+                <SelectItem value="AAS">School of Arts and Sciences</SelectItem>
+                <SelectItem value="ED">School of Education</SelectItem>
+                <SelectItem value="ENG">School of Engineering</SelectItem>
+                <SelectItem value="FOS">
+                  School of Fisheries and Oceanic Science
+                </SelectItem>
+                <SelectItem value="FES">
+                  School of Forestry and Environmental Sciences
+                </SelectItem>
+                <SelectItem value="IT">
+                  School of Industrial Technology
+                </SelectItem>
+                <SelectItem value="IT2">
+                  School of Information Technology
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
+          {/* Participant Year */}
           <div className="space-y-2">
             <Label htmlFor="year" className="text-blue-400">
               Year
@@ -189,7 +288,7 @@ export default function AddParticipants({
               disabled={!isAddingParticipants}
             >
               <SelectTrigger
-                id="sex"
+                id="year"
                 className="bg-gray-700 border-blue-500 text-white"
               >
                 <SelectValue placeholder="Year" />
@@ -204,6 +303,7 @@ export default function AddParticipants({
             </Select>
           </div>
 
+          {/* Participant Section */}
           <div className="space-y-2">
             <Label htmlFor="section" className="text-blue-400">
               Section
@@ -222,13 +322,18 @@ export default function AddParticipants({
             />
           </div>
 
+          {/* Participant Ethnic Group */}
           <div className="space-y-2">
             <Label htmlFor="ethnicGroup" className="text-blue-400">
               Ethnic Group
             </Label>
             <Select
               onValueChange={(value) =>
-                setNewParticipant({ ...newParticipant, ethnicGroup: value })
+                setNewParticipant({
+                  ...newParticipant,
+                  ethnicGroup: value,
+                  otherEthnicGroup: "",
+                })
               }
               disabled={!isAddingParticipants}
             >
@@ -244,12 +349,12 @@ export default function AddParticipants({
                 <SelectItem value="Ibanag">Ibanag</SelectItem>
                 <SelectItem value="Ifugao">Ifugao</SelectItem>
                 <SelectItem value="Tagalog">Tagalog</SelectItem>
-                <SelectItem value="Others">Others</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {newParticipant.ethnicGroup === "Others" && (
+          {newParticipant.ethnicGroup === "Other" && (
             <div className="space-y-2">
               <Label htmlFor="otherEthnicGroup" className="text-blue-400">
                 Specify Other Ethnic Group
@@ -269,6 +374,7 @@ export default function AddParticipants({
             </div>
           )}
 
+          {/* Add Participant Button */}
           <Button
             type="submit"
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
@@ -280,6 +386,7 @@ export default function AddParticipants({
           </Button>
         </form>
 
+        {/* Finish Adding Participants Button */}
         {isAddingParticipants && (
           <Button
             onClick={finishAddingParticipants}
@@ -289,6 +396,7 @@ export default function AddParticipants({
           </Button>
         )}
 
+        {/* Warning Alert if no event is selected */}
         {!isAddingParticipants && (
           <Alert variant="destructive" className="mt-4">
             <AlertTriangle className="h-4 w-4" />
