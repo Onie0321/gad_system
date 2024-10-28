@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,24 +16,69 @@ import { toast } from "react-toastify";
 import {
   addParticipantToEvent,
   checkIfParticipantExists,
-} from "../../../../lib/appwrite"; // Your Appwrite function for adding participants
+} from "@/lib/appwrite";
 
-export default function AddParticipants({
+export default function Component({
   selectedEvent,
-  newParticipant,
-  setNewParticipant,
-  isAddingParticipants,
   setEvents,
   setSelectedEvent,
   setIsAddingParticipants,
-  handleAddParticipant,
 }) {
+  const [newParticipant, setNewParticipant] = useState({
+    studentId: "",
+    name: "",
+    sex: "",
+    age: "",
+    school: "",
+    year: "",
+    section: "",
+    ethnicGroup: "",
+    otherEthnicGroup: "",
+  });
   const [hasAddedFirstParticipant, setHasAddedFirstParticipant] =
     useState(false);
+  const [participantCount, setParticipantCount] = useState(0);
+  const [maleCount, setMaleCount] = useState(0);   // Track male count
+const [femaleCount, setFemaleCount] = useState(0); // Track female count
+  const [selectedGenders, setSelectedGenders] = useState(new Set());
+  const [isAddingParticipantsLocal, setIsAddingParticipantsLocal] =
+    useState(false);
+    const [showAlert, setShowAlert] = useState(false); // New state for alert
+
+    
+
+  useEffect(() => {
+    if (selectedEvent) {
+      setIsAddingParticipantsLocal(true);
+      setParticipantCount(selectedEvent.participants?.length || 0);
+    } else {
+      setIsAddingParticipantsLocal(false);
+    }
+  }, [selectedEvent]);
+
+  const resetForm = () => {
+    setNewParticipant({
+      studentId: "",
+      name: "",
+      sex: "",
+      age: "",
+      school: "",
+      year: "",
+      section: "",
+      ethnicGroup: "",
+      otherEthnicGroup: "",
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    handleAddParticipant();
+
+    const studentIdPattern = /^\d{2}-\d{2}-\d{4}$/;
+    if (!studentIdPattern.test(newParticipant.studentId)) {
+      toast.error("Student ID must follow the format XX-XX-XXXX");
+      return;
+    }
+  
 
     if (!selectedEvent || !selectedEvent.$id) {
       toast.error(
@@ -43,6 +88,7 @@ export default function AddParticipants({
     }
 
     const requiredFields = [
+      "studentId",
       "name",
       "sex",
       "age",
@@ -71,43 +117,58 @@ export default function AddParticipants({
     }
 
     try {
-      // Check if the participant already exists before adding them
-      const isParticipantExists = await checkIfParticipantExists(
+      // Check for duplicate Student ID
+      const isStudentIdDuplicate = await checkIfParticipantExists(
         selectedEvent.$id,
+        newParticipant.studentId,
+        ""
+      );
+  
+      if (isStudentIdDuplicate) {
+        toast.error("A participant with this Student ID already exists in this event.");
+        return;
+      }
+  
+      // Check for duplicate Name
+      const isNameDuplicate = await checkIfParticipantExists(
+        selectedEvent.$id,
+        "",
         newParticipant.name
       );
-
-      if (isParticipantExists) {
-        toast.error(
-          "Participant with the same name already exists in this event."
-        );
-        return; // Exit early if the participant already exists
+  
+      if (isNameDuplicate) {
+        toast.error("A participant with this Name already exists in this event.");
+        return;
       }
 
       const updatedEvent = await addParticipantToEvent(
-        selectedEvent.$id, // Pass the event ID to the function
+        selectedEvent.$id,
         newParticipant
       );
-      setSelectedEvent(updatedEvent);
+
+      if (setSelectedEvent) {
+        setSelectedEvent(updatedEvent); // Ensure setSelectedEvent is a function before calling
+      }
+
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
-          event.id === updatedEvent.id ? updatedEvent : event
+          event.$id === updatedEvent.$id ? updatedEvent : event
         )
       );
 
-      // Clear the form after successfully adding a participant
-      setNewParticipant({
-        name: "",
-        sex: "",
-        age: "",
-        school: "",
-        year: "",
-        section: "",
-        ethnicGroup: "",
-        otherEthnicGroup: "",
-      });
+      
 
-      setHasAddedFirstParticipant(true);
+      resetForm(); // Reset input fields
+      setHasAddedFirstParticipant(true); // Update button text
+      setParticipantCount((prevCount) => prevCount + 1);
+
+       // Increment male or female count based on selected gender
+    if (newParticipant.sex === "Male") {
+      setMaleCount((prevMaleCount) => prevMaleCount + 1);
+    } else if (newParticipant.sex === "Female") {
+      setFemaleCount((prevFemaleCount) => prevFemaleCount + 1);
+    }
+
       toast.success("Participant added successfully!");
     } catch (error) {
       console.error("Error adding participant:", error);
@@ -126,35 +187,38 @@ export default function AddParticipants({
       );
 
       setIsAddingParticipants(false);
-      setNewParticipant({
-        name: "",
-        sex: "",
-        age: "",
-        school: "",
-        year: "",
-        section: "",
-        ethnicGroup: "",
-        otherEthnicGroup: "",
-      });
+      resetForm();
+      setShowAlert(true); // Show alert when finishing
+      setIsAddingParticipantsLocal(false); // Disable further additions
       toast.success("Adding Participants Done");
+    } else {
+      // Show warning if no event is selected
+      toast.error("Please add a new event before adding participants.");
     }
   };
-
   const validateAge = (value) => {
     const parsedValue = Number(value);
-
-    // Check if the value is a positive integer and not NaN
-    if (
-      !isNaN(parsedValue) &&
+    return !isNaN(parsedValue) &&
       parsedValue > 0 &&
       Number.isInteger(parsedValue)
-    ) {
-      return parsedValue;
-    } else if (value === "") {
-      return ""; // Allow clearing the field
-    }
+      ? parsedValue
+      : "";
+  };
 
-    return null; // Invalid input
+  const validateStudentId = (value) => {
+    // Remove all non-digit characters
+    const onlyNumbers = value.replace(/\D/g, "");
+  
+    // Format based on length
+    if (onlyNumbers.length <= 2) {
+      return onlyNumbers;
+    } else if (onlyNumbers.length <= 4) {
+      return `${onlyNumbers.slice(0, 2)}-${onlyNumbers.slice(2)}`;
+    } else if (onlyNumbers.length <= 8) {
+      return `${onlyNumbers.slice(0, 2)}-${onlyNumbers.slice(2, 4)}-${onlyNumbers.slice(4)}`;
+    } else {
+      return `${onlyNumbers.slice(0, 2)}-${onlyNumbers.slice(2, 4)}-${onlyNumbers.slice(4, 8)}`;
+    }
   };
 
   return (
@@ -169,10 +233,33 @@ export default function AddParticipants({
             Adding participants to: {selectedEvent.eventName}
           </p>
         )}
+        {selectedEvent && (
+         <p className="text-blue-300 mt-2">
+         Total Participants: {participantCount} (Male: {maleCount}, Female: {femaleCount})
+       </p>
+        )}
+       
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Participant Name */}
+          <div className="space-y-2">
+            <Label htmlFor="studentId" className="text-blue-400">
+              Student ID
+            </Label>
+            <Input
+              id="studentId"
+              value={newParticipant.studentId}
+              onChange={(e) =>
+                setNewParticipant({
+                  ...newParticipant,
+                  studentId: validateStudentId(e.target.value),
+                })
+              }
+              className="bg-gray-700 border-blue-500 text-white"
+              disabled={!isAddingParticipantsLocal}
+              placeholder="21-01-2098"
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="name" className="text-blue-400">
               Name
@@ -184,35 +271,40 @@ export default function AddParticipants({
                 setNewParticipant({ ...newParticipant, name: e.target.value })
               }
               className="bg-gray-700 border-blue-500 text-white"
-              disabled={!isAddingParticipants}
+              disabled={!isAddingParticipantsLocal}
+              placeholder="Enter your Name"
             />
           </div>
-
-          {/* Participant Sex */}
           <div className="space-y-2">
             <Label htmlFor="sex" className="text-blue-400">
               Sex
             </Label>
             <Select
+              value={newParticipant.sex} // Bind select value to newParticipant state
               onValueChange={(value) =>
                 setNewParticipant({ ...newParticipant, sex: value })
               }
-              disabled={!isAddingParticipants}
+              disabled={!isAddingParticipantsLocal}
             >
               <SelectTrigger
                 id="sex"
                 className="bg-gray-700 border-blue-500 text-white"
               >
-                <SelectValue placeholder="Sex" />
+                <SelectValue placeholder="Select Sex" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Male">Male</SelectItem>
-                <SelectItem value="Female">Female</SelectItem>
+                <SelectItem value="Male" disabled={selectedGenders.has("Male")}>
+                  Male
+                </SelectItem>
+                <SelectItem
+                  value="Female"
+                  disabled={selectedGenders.has("Female")}
+                >
+                  Female
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
-
-          {/* Participant Age */}
           <div className="space-y-2">
             <Label htmlFor="age" className="text-blue-400">
               Age
@@ -221,34 +313,33 @@ export default function AddParticipants({
               id="age"
               type="number"
               value={newParticipant.age}
-              onChange={(e) => {
-                const validatedAge = validateAge(e.target.value);
-
-                if (validatedAge !== null) {
-                  setNewParticipant({ ...newParticipant, age: validatedAge });
-                }
-              }}
+              onChange={(e) =>
+                setNewParticipant({
+                  ...newParticipant,
+                  age: validateAge(e.target.value),
+                })
+              }
               className="bg-gray-700 border-blue-500 text-white"
-              disabled={!isAddingParticipants}
+              disabled={!isAddingParticipantsLocal}
+              placeholder="Enter your Age"
             />
           </div>
-
-          {/* Participant School */}
           <div className="space-y-2">
             <Label htmlFor="school" className="text-blue-400">
               School
             </Label>
             <Select
+            value={newParticipant.school}
               onValueChange={(value) =>
                 setNewParticipant({ ...newParticipant, school: value })
               }
-              disabled={!isAddingParticipants}
+              disabled={!isAddingParticipantsLocal}
             >
               <SelectTrigger
                 id="school"
                 className="bg-gray-700 border-blue-500 text-white"
               >
-                <SelectValue placeholder="School" />
+                <SelectValue placeholder="Select School" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ABM">
@@ -275,23 +366,22 @@ export default function AddParticipants({
               </SelectContent>
             </Select>
           </div>
-
-          {/* Participant Year */}
           <div className="space-y-2">
             <Label htmlFor="year" className="text-blue-400">
               Year
             </Label>
             <Select
+            value={newParticipant.year}
               onValueChange={(value) =>
                 setNewParticipant({ ...newParticipant, year: value })
               }
-              disabled={!isAddingParticipants}
+              disabled={!isAddingParticipantsLocal}
             >
               <SelectTrigger
                 id="year"
                 className="bg-gray-700 border-blue-500 text-white"
               >
-                <SelectValue placeholder="Year" />
+                <SelectValue placeholder="Select Year" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="First">First Year</SelectItem>
@@ -302,8 +392,6 @@ export default function AddParticipants({
               </SelectContent>
             </Select>
           </div>
-
-          {/* Participant Section */}
           <div className="space-y-2">
             <Label htmlFor="section" className="text-blue-400">
               Section
@@ -318,16 +406,16 @@ export default function AddParticipants({
                 })
               }
               className="bg-gray-700 border-blue-500 text-white"
-              disabled={!isAddingParticipants}
+              disabled={!isAddingParticipantsLocal}
+              placeholder="Enter your Section"
             />
           </div>
-
-          {/* Participant Ethnic Group */}
           <div className="space-y-2">
             <Label htmlFor="ethnicGroup" className="text-blue-400">
               Ethnic Group
             </Label>
             <Select
+            value={newParticipant.ethnicGroup}
               onValueChange={(value) =>
                 setNewParticipant({
                   ...newParticipant,
@@ -335,7 +423,7 @@ export default function AddParticipants({
                   otherEthnicGroup: "",
                 })
               }
-              disabled={!isAddingParticipants}
+              disabled={!isAddingParticipantsLocal}
             >
               <SelectTrigger
                 id="ethnicGroup"
@@ -353,7 +441,6 @@ export default function AddParticipants({
               </SelectContent>
             </Select>
           </div>
-
           {newParticipant.ethnicGroup === "Other" && (
             <div className="space-y-2">
               <Label htmlFor="otherEthnicGroup" className="text-blue-400">
@@ -369,25 +456,22 @@ export default function AddParticipants({
                   })
                 }
                 className="bg-gray-700 border-blue-500 text-white"
-                disabled={!isAddingParticipants}
+                disabled={!isAddingParticipantsLocal}
+                placeholder="Specify Other Ethnic Group"
               />
             </div>
           )}
-
-          {/* Add Participant Button */}
           <Button
             type="submit"
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            disabled={!isAddingParticipants}
+            disabled={!isAddingParticipantsLocal}
           >
             {hasAddedFirstParticipant
               ? "Add Another Participant"
               : "Add Participant"}
           </Button>
         </form>
-
-        {/* Finish Adding Participants Button */}
-        {isAddingParticipants && (
+        {isAddingParticipantsLocal && (
           <Button
             onClick={finishAddingParticipants}
             className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white"
@@ -395,14 +479,12 @@ export default function AddParticipants({
             Finish Adding Participants
           </Button>
         )}
-
-        {/* Warning Alert if no event is selected */}
-        {!isAddingParticipants && (
+         {!isAddingParticipantsLocal && showAlert && (
           <Alert variant="destructive" className="mt-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Warning</AlertTitle>
             <AlertDescription>
-              Please add new event before adding participants.
+              Please add a new event before adding participants.
             </AlertDescription>
           </Alert>
         )}
