@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { Atom, Bell, Calendar, Layout, Users, FileText, LogOut, Menu } from "lucide-react"
+import { Atom, Bell, ChartPie, Calendar, Layout, Users, FileText, LogOut, Menu, BookText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -26,62 +26,21 @@ import {
 } from "@/components/ui/card"
 
 import EventManagement from "./eventmanagement/page";
+import PersonnelStatistics from "./personnel/page"
+import GoogleFormsImport from "./form/page"
 import GADInitiatives from "./initiatives/page";
 import Reports from "./reports/page";
 import UserManagement from "./usermanagement/page";
 import SystemSettings from "./settings/page";
-import LogOutComponent from "./logout/page";
+import LogOutComponent from "./logout/page"; 
 
 const nav = [
   { icon: Layout, title: "Dashboard", id: "dashboard" },
   { icon: Calendar, title: "Event Management", id: "event" },
-  { icon: FileText, title: "Initiatives", id: "initiatives" },
-  { icon: Users, title: "User Management", id: "users" },
+  { icon: ChartPie, title: "Personnel Statistics", id: "personnel" },
+  { icon: BookText, title: "Google Forms Import", id: "form" },
+  { icon: Users, title: "System Settings", id: "settings" },
   { icon: LogOut, title: "Logout", id: "logout" },
-]
-
-const academicUnits = [
-  "School of Accountancy and Business Management",
-  "School of Agricultural Science",
-  "School of Arts and Sciences",
-  "School of Education",
-  "School of Engineering",
-  "School of Fisheries and Oceanic Science",
-  "School of Forestry and Environmental Sciences",
-  "School of Industrial Technology",
-  "School of Information Technology",
-]
-
-const nonAcademicUnits = [
-  "Accounting Unit",
-  "Admission Office",
-  "Budget Unit",
-  "Cash Unit",
-  "Data Protection Office",
-  "Disaster Risk Reduction Management Office",
-  "Extension and Rural Development Office",
-  "Gender and Development Office",
-  "General Services Unit",
-  "Guidance Office",
-  "Health Services Unit",
-  "ICT Unit",
-  "IGP and Auxiliary Office",
-  "International, External, and Alumni Services Office",
-  "Legal Unit",
-  "Library",
-  "National Service Training Program",
-  "Office of Internal Audit",
-  "Planning Unit",
-  "Procurement Management Unit",
-  "Project Management Unit",
-  "Quality Assurance Management Office",
-  "Records Unit",
-  "Research and Development Office",
-  "Scholarship Office",
-  "Sentro ng Wika at Kultura",
-  "Sports Development Unit",
-  "Supply Unit",
-  "Testing and Evaluation Center",
 ]
 
 export default function Officer() {
@@ -272,10 +231,11 @@ export default function Officer() {
             </Tabs>
           )}
 
-{activeTab === "users" && <UserManagement />}
           {activeTab === "event" && <EventManagement />}
-          {activeTab === "initiatives" && <GADInitiatives />}
+          {activeTab === "personnel" && <PersonnelStatistics />}          
+          {activeTab === "form" && <GoogleFormsImport />}          
           {activeTab === "reports" && <Reports />}
+          {activeTab === "settings" && <SystemSettings />}
           {activeTab === "logout" && <LogOutComponent />}
         </div>
       </main>
