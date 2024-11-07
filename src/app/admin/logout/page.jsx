@@ -10,9 +10,21 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
+import { signOut } from "../../../lib/appwrite";
 
 export default function LogOutComponent() {
   const router = useRouter();
+
+  // Handle log out
+  const handleLogOut = async () => {
+    try {
+      await signOut(); // Call the signOut function
+      router.push("/"); // Redirect to the home page
+    } catch (error) {
+      console.error("Sign out error:", error.message);
+      // Optionally show an error message or toast
+    }
+  };
   return (
     <Card className="bg-gray-800 border border-blue-500">
       <CardHeader className="flex flex-row items-center">
@@ -28,7 +40,7 @@ export default function LogOutComponent() {
         <div className="flex space-x-4">
           <Button
             className="flex-1 bg-red-600 hover:bg-red-700"
-            onClick={() => router.push("/")}
+            onClick={handleLogOut}
           >
             Confirm Log Out
           </Button>

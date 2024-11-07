@@ -1,16 +1,17 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import {
-  Users,
+  UserCircle,
   Search,
-  UserPlus,
-  Edit,
-  Trash2,
-  Eye,
-  BarChart2,
-  Shield,
+  UserPlus2,
+  Settings,
+  Trash,
+  FileText,
+  PieChart,
+  RefreshCcw,
   Mail,
-  RefreshCw,
+  ShieldCheck,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,14 +48,15 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
+import { getAllUsers } from "../../../lib/appwrite";
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedUsers, setSelectedUsers] = useState([]);
   const { toast } = useToast();
 
@@ -66,26 +68,8 @@ export default function UserManagement() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-
-      const response = await fetch("/api/admin/users", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Unauthorized: Please log in again");
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setUsers(data.users);
+      const data = await getAllUsers();
+      setUsers(data);
     } catch (err) {
       console.error("Error fetching users:", err);
       setError(err.message);
@@ -106,8 +90,10 @@ export default function UserManagement() {
   const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (roleFilter === "" || user.role === roleFilter) &&
-      (statusFilter === "" || user.status === statusFilter)
+      (roleFilter === "all" || roleFilter === "" || user.role === roleFilter) &&
+      (statusFilter === "all" ||
+        statusFilter === "" ||
+        user.status === statusFilter)
   );
 
   const handleUserSelection = (userId) => {
@@ -119,44 +105,18 @@ export default function UserManagement() {
   };
 
   const handleBulkAction = async (action) => {
-    // Implement bulk actions (e.g., delete, change role, etc.)
     console.log(`Bulk ${action} for users:`, selectedUsers);
-    // Add API call here
   };
 
-  if (loading) {
-    return (
-      <Card className="bg-gray-800 border border-blue-500">
-        <CardContent className="flex items-center justify-center h-64">
-          <RefreshCw className="h-8 w-8 text-blue-400 animate-spin" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="bg-gray-800 border border-red-500">
-        <CardContent className="flex flex-col items-center justify-center h-64">
-          <p className="text-red-400 mb-4">{error}</p>
-          <Button
-            onClick={handleRetry}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Retry
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="bg-gray-800 border-2 border-blue-500 shadow-lg shadow-blue-500/50">
+    <Card className="bg-gray-800 border-4 border-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 shadow-lg shadow-blue-500/50">
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center">
-          <Users className="h-6 w-6 text-blue-400 mr-2" />
+          <UserCircle className="h-10 w-10 mr-2 text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-blue-400 to-purple-400" />
           <div>
-            <CardTitle className="text-blue-400">User Management</CardTitle>
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-emerald-400 via-blue-400 to-purple-400 text-transparent bg-clip-text">
+              User Management
+            </CardTitle>
             <CardDescription className="text-gray-400">
               View and manage user accounts
             </CardDescription>
@@ -165,14 +125,16 @@ export default function UserManagement() {
         <div className="flex space-x-2">
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <UserPlus className="h-4 w-4 mr-2" />
+              <Button className="bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white">
+                <UserPlus2 className="h-4 w-4 mr-2" />
                 Add New User
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-gray-800 text-white">
+            <DialogContent className="bg-gray-800 text-white border-4 border-gradient-to-r from-emerald-500 via-blue-500 to-purple-500">
               <DialogHeader>
-                <DialogTitle>Add New User</DialogTitle>
+                <DialogTitle className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-blue-400 to-purple-400">
+                  Add New User
+                </DialogTitle>
                 <DialogDescription>
                   Create a new user account or send an invitation.
                 </DialogDescription>
@@ -184,7 +146,7 @@ export default function UserManagement() {
                   </Label>
                   <Input
                     id="name"
-                    className="col-span-3 bg-gray-700 text-white"
+                    className="col-span-3 bg-gray-700 text-white border-emerald-500"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -193,7 +155,7 @@ export default function UserManagement() {
                   </Label>
                   <Input
                     id="email"
-                    className="col-span-3 bg-gray-700 text-white"
+                    className="col-span-3 bg-gray-700 text-white border-blue-500"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -201,7 +163,7 @@ export default function UserManagement() {
                     Role
                   </Label>
                   <Select>
-                    <SelectTrigger className="col-span-3 bg-gray-700 text-white">
+                    <SelectTrigger className="col-span-3 bg-gray-700 text-white border-purple-500">
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-700 text-white">
@@ -213,18 +175,34 @@ export default function UserManagement() {
                 </div>
               </div>
               <div className="flex justify-between">
-                <Button variant="outline" className="bg-gray-700 text-white">
+                <Button
+                  variant="outline"
+                  className="bg-gray-700 text-white border-emerald-500 hover:bg-emerald-600 hover:text-white"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
                   Send Invitation
                 </Button>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+                  <UserPlus2 className="h-4 w-4 mr-2" />
                   Create User
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
-          <Button variant="outline" className="bg-gray-700 text-white">
-            <BarChart2 className="h-4 w-4 mr-2" />
+          <Button
+            variant="outline"
+            className="bg-gray-700 text-white border-blue-500 hover:bg-blue-600 hover:text-white"
+          >
+            <PieChart className="h-4 w-4 mr-2" />
             User Insights
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-gray-700 text-white border-purple-500 hover:bg-purple-600 hover:text-white"
+            onClick={fetchUsers}
+          >
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Refresh
           </Button>
         </div>
       </CardHeader>
@@ -232,31 +210,31 @@ export default function UserManagement() {
         <div className="flex justify-between items-center mb-4">
           <div className="flex space-x-2">
             <div className="relative w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-emerald-400" />
               <Input
-                className="pl-8 bg-gray-700 text-white border-blue-500"
+                className="pl-8 bg-gray-700 text-white border-emerald-500"
                 placeholder="Search users..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-[180px] bg-gray-700 text-white">
+              <SelectTrigger className="w-[180px] bg-gray-700 text-white border-blue-500">
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent className="bg-gray-700 text-white">
-                <SelectItem value="">All Roles</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="officer">Officer</SelectItem>
                 <SelectItem value="user">User</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] bg-gray-700 text-white">
+              <SelectTrigger className="w-[180px] bg-gray-700 text-white border-purple-500">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent className="bg-gray-700 text-white">
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
@@ -265,120 +243,82 @@ export default function UserManagement() {
           <div className="flex space-x-2">
             <Button
               variant="outline"
-              className="bg-gray-700 text-white"
+              className="bg-gray-700 text-white border-red-500 hover:bg-red-600 hover:text-white"
               onClick={() => handleBulkAction("delete")}
             >
+              <Trash className="h-4 w-4 mr-2" />
               Bulk Delete
             </Button>
             <Button
               variant="outline"
-              className="bg-gray-700 text-white"
+              className="bg-gray-700 text-white border-blue-500 hover:bg-blue-600 hover:text-white"
               onClick={() => handleBulkAction("changeRole")}
             >
+              <Settings className="h-4 w-4 mr-2" />
               Change Role
             </Button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-700">
-                <TableHead className="w-[50px]">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-b border-gray-700">
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedUsers(users.map((user) => user.id));
+                    } else {
+                      setSelectedUsers([]);
+                    }
+                  }}
+                />
+              </TableHead>
+              <TableHead className="text-emerald-400">Name</TableHead>
+              <TableHead className="text-blue-400">Email</TableHead>
+              <TableHead className="text-purple-400">Role</TableHead>
+              <TableHead className="text-emerald-400">Status</TableHead>
+              <TableHead className="text-blue-400">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredUsers.map((user) => (
+              <TableRow key={user.id} className="border-b border-gray-700">
+                <TableCell>
                   <Checkbox
-                    checked={selectedUsers.length === filteredUsers.length}
-                    onCheckedChange={(checked) => {
-                      setSelectedUsers(
-                        checked ? filteredUsers.map((u) => u._id) : []
-                      );
-                    }}
+                    checked={selectedUsers.includes(user.id)}
+                    onCheckedChange={() => handleUserSelection(user.id)}
                   />
-                </TableHead>
-                <TableHead className="text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Name
-                </TableHead>
-                <TableHead className="text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Email
-                </TableHead>
-                <TableHead className="text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Role
-                </TableHead>
-                <TableHead className="text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Status
-                </TableHead>
-                <TableHead className="text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  Actions
-                </TableHead>
+                </TableCell>
+                <TableCell className="text-white">{user.name}</TableCell>
+                <TableCell className="text-white">{user.email}</TableCell>
+                <TableCell className="text-white">{user.role}</TableCell>
+                <TableCell className="text-white">{user.status}</TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      className="bg-gray-700 text-emerald-400 border-emerald-500 hover:bg-emerald-600 hover:text-white"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="bg-gray-700 text-blue-400 border-blue-500 hover:bg-blue-600 hover:text-white"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="bg-gray-700 text-red-400 border-red-400 hover:bg-red-600 hover:text-white"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow
-                  key={user._id}
-                  className="bg-gray-800 hover:bg-gray-700 transition-colors"
-                >
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedUsers.includes(user._id)}
-                      onCheckedChange={() => handleUserSelection(user._id)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium text-gray-300">
-                    {user.name}
-                  </TableCell>
-                  <TableCell className="text-gray-300">{user.email}</TableCell>
-                  <TableCell className="text-gray-300">{user.role}</TableCell>
-                  <TableCell className="text-gray-300">{user.status}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-blue-400 border-blue-400"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-400 border-red-400"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-green-400 border-green-400"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="mt-4 flex justify-between items-center">
-          <div className="text-sm text-gray-400">
-            Showing {filteredUsers.length} of {users.length} users
-          </div>
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-gray-700 text-white"
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-gray-700 text-white"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
@@ -390,7 +330,9 @@ function Checkbox({ checked, onCheckedChange }) {
       checked={checked}
       onCheckedChange={onCheckedChange}
       className={`${
-        checked ? "bg-blue-600" : "bg-gray-600"
+        checked
+          ? "bg-gradient-to-r from-emerald-600 to-blue-600"
+          : "bg-gray-600"
       } relative inline-flex h-5 w-9 items-center rounded-full`}
     >
       <span className="sr-only">Toggle selection</span>

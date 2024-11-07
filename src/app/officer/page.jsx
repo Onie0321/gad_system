@@ -1,8 +1,19 @@
-"use client"
+"use client";
 
-import React, { useState } from "react"
-import { Atom, Bell, Calendar, Layout, Users, FileText, LogOut, Menu } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import React, { useState, useEffect } from "react";
+import {
+  Atom,
+  Bell,
+  ChartPie,
+  Calendar,
+  Layout,
+  Users,
+  FileText,
+  LogOut,
+  Menu,
+  BookText,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,102 +21,85 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Switch } from "@/components/ui/switch"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 
 import EventManagement from "./eventmanagement/page";
-import GADInitiatives from "./initiatives/page";
+import PersonnelStatistics from "./personnel/page";
+import GoogleFormsImport from "./form/page";
+import DynamicExcelTable from "./initiatives/page";
 import Reports from "./reports/page";
 import UserManagement from "./usermanagement/page";
 import SystemSettings from "./settings/page";
 import LogOutComponent from "./logout/page";
+import { fetchEvents } from "@/lib/appwrite";
 
 const nav = [
   { icon: Layout, title: "Dashboard", id: "dashboard" },
   { icon: Calendar, title: "Event Management", id: "event" },
-  { icon: FileText, title: "Initiatives", id: "initiatives" },
-  { icon: Users, title: "User Management", id: "users" },
+  { icon: ChartPie, title: "Personnel Statistics", id: "personnel" },
+  { icon: BookText, title: "Google Forms Import", id: "form" },
+  { icon: BookText, title: "Dynamic Excel Table", id: "excel" },
+  { icon: Users, title: "System Settings", id: "settings" },
   { icon: LogOut, title: "Logout", id: "logout" },
-]
+];
 
-const academicUnits = [
-  "School of Accountancy and Business Management",
-  "School of Agricultural Science",
-  "School of Arts and Sciences",
-  "School of Education",
-  "School of Engineering",
-  "School of Fisheries and Oceanic Science",
-  "School of Forestry and Environmental Sciences",
-  "School of Industrial Technology",
-  "School of Information Technology",
-]
+const getTimeAgo = (date) => {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
 
-const nonAcademicUnits = [
-  "Accounting Unit",
-  "Admission Office",
-  "Budget Unit",
-  "Cash Unit",
-  "Data Protection Office",
-  "Disaster Risk Reduction Management Office",
-  "Extension and Rural Development Office",
-  "Gender and Development Office",
-  "General Services Unit",
-  "Guidance Office",
-  "Health Services Unit",
-  "ICT Unit",
-  "IGP and Auxiliary Office",
-  "International, External, and Alumni Services Office",
-  "Legal Unit",
-  "Library",
-  "National Service Training Program",
-  "Office of Internal Audit",
-  "Planning Unit",
-  "Procurement Management Unit",
-  "Project Management Unit",
-  "Quality Assurance Management Office",
-  "Records Unit",
-  "Research and Development Office",
-  "Scholarship Office",
-  "Sentro ng Wika at Kultura",
-  "Sports Development Unit",
-  "Supply Unit",
-  "Testing and Evaluation Center",
-]
+  if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hours ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays} days ago`;
+};
 
 export default function Officer() {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activeTab, setActiveTab] = useState("dashboard")
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState("dashboard");
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Mock data for events
-  const recentEvents = [
-    { id: 1, name: "Orientation Day", date: "2023-08-15", unit: "School of Engineering" },
-    { id: 2, name: "Career Fair", date: "2023-08-20", unit: "Career Services" },
-    { id: 3, name: "Research Symposium", date: "2023-08-25", unit: "School of Sciences" },
-  ]
+  const [events, setEvents] = useState({
+    recent: [],
+    academic: [],
+    nonAcademic: [],
+  });
 
-  const academicEvents = [
-    { id: 4, name: "IT Workshop", date: "2023-09-01", unit: "School of Information Technology" },
-    { id: 5, name: "Business Ethics Seminar", date: "2023-09-05", unit: "School of Accountancy and Business Management" },
-  ]
+  // Function to fetch events and categorize them
+  const loadEvents = async () => {
+    try {
+      const fetchedEvents = await fetchEvents();
+      const now = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 7);
 
-  const nonAcademicEvents = [
-    { id: 6, name: "Health and Wellness Fair", date: "2023-09-10", unit: "Health Services Unit" },
-    { id: 7, name: "Library Week", date: "2023-09-15", unit: "Library" },
-  ]
+      // Filter and categorize events
+      const recent = fetchedEvents.filter((event) => {
+        const eventDate = new Date(event.$createdAt);
+        return eventDate >= sevenDaysAgo && eventDate <= now;
+      });
+      const academic = fetchedEvents.filter(
+        (event) => event.eventType === "Academic"
+      );
+      const nonAcademic = fetchedEvents.filter(
+        (event) => event.eventType === "Non-Academic"
+      );
+
+      setEvents({ recent, academic, nonAcademic });
+    } catch (error) {
+      console.error("Error loading events:", error.message);
+    }
+  };
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
 
   return (
     <div className="flex h-screen bg-gray-900 text-white">
@@ -117,7 +111,13 @@ export default function Officer() {
       >
         <div className="p-4 flex justify-between items-center">
           <div className={`flex items-center ${sidebarOpen ? "" : "hidden"}`}>
-            <Atom className="h-8 w-8 text-blue-400 mr-2" />
+            <img
+              src="/logo/gad.png"
+              alt="GAD Nexus Logo"
+              width={40}
+              height={40}
+              className="object-contain"
+            />{" "}
             <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
               Officer Dashboard
             </h2>
@@ -212,19 +212,42 @@ export default function Officer() {
               <TabsContent value="recent">
                 <Card className="bg-gray-800 border border-blue-500">
                   <CardHeader>
-                    <CardTitle className="text-blue-400">Recent Events</CardTitle>
+                    <CardTitle className="text-blue-400">
+                      Recent Events
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {recentEvents.map((event) => (
-                        <div key={event.id} className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-200">{event.name}</p>
-                            <p className="text-xs text-gray-400">{event.unit}</p>
+                      {events.recent.map((event) => {
+                        const $createdAt = new Date(event.$createdAt);
+                        const formattedDate = $createdAt.toLocaleDateString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }
+                        );
+
+                        return (
+                          <div
+                            key={event.$id}
+                            className="flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-gray-200">
+                                {event.eventName}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {event.unit}
+                              </p>
+                            </div>
+                            <p className="text-sm text-gray-400">
+                              {formattedDate} ({getTimeAgo($createdAt)})
+                            </p>
                           </div>
-                          <p className="text-sm text-gray-400">{event.date}</p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -232,19 +255,38 @@ export default function Officer() {
               <TabsContent value="academic">
                 <Card className="bg-gray-800 border border-blue-500">
                   <CardHeader>
-                    <CardTitle className="text-blue-400">Academic Events</CardTitle>
+                    <CardTitle className="text-blue-400">
+                      Academic Events
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {academicEvents.map((event) => (
-                        <div key={event.id} className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-200">{event.name}</p>
-                            <p className="text-xs text-gray-400">{event.unit}</p>
+                      {events.academic.map((event) => {
+                        const $createdAt = new Date(event.$createdAt);
+                        return (
+                          <div
+                            key={event.$id}
+                            className="flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-gray-200">
+                                {event.eventName}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {event.unit}
+                              </p>
+                            </div>
+                            <div className="text-sm text-gray-400">
+                              {$createdAt.toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}{" "}
+                              ({getTimeAgo($createdAt)})
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-400">{event.date}</p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -252,19 +294,38 @@ export default function Officer() {
               <TabsContent value="nonacademic">
                 <Card className="bg-gray-800 border border-blue-500">
                   <CardHeader>
-                    <CardTitle className="text-blue-400">Non-Academic Events</CardTitle>
+                    <CardTitle className="text-blue-400">
+                      Non-Academic Events
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {nonAcademicEvents.map((event) => (
-                        <div key={event.id} className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-200">{event.name}</p>
-                            <p className="text-xs text-gray-400">{event.unit}</p>
+                      {events.nonAcademic.map((event) => {
+                        const $createdAt = new Date(event.$createdAt);
+                        return (
+                          <div
+                            key={event.$id}
+                            className="flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-gray-200">
+                                {event.eventName}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {event.unit}
+                              </p>
+                            </div>
+                            <div className="text-sm text-gray-400">
+                              {$createdAt.toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}{" "}
+                              ({getTimeAgo($createdAt)})
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-400">{event.date}</p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -272,13 +333,15 @@ export default function Officer() {
             </Tabs>
           )}
 
-{activeTab === "users" && <UserManagement />}
           {activeTab === "event" && <EventManagement />}
-          {activeTab === "initiatives" && <GADInitiatives />}
+          {activeTab === "personnel" && <PersonnelStatistics />}
+          {activeTab === "form" && <GoogleFormsImport />}
           {activeTab === "reports" && <Reports />}
+          {activeTab === "settings" && <SystemSettings />}
+          {activeTab === "excel" && <DynamicExcelTable />}
           {activeTab === "logout" && <LogOutComponent />}
         </div>
       </main>
     </div>
-  )
+  );
 }

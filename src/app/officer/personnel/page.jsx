@@ -1,23 +1,54 @@
-"use client"
+"use client";
 
-import React from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
-import { Users, UserCheck, UserPlus, Briefcase, GraduationCap, Baby, HelpCircle  } from "lucide-react"
-import { MaleIcon, FemaleIcon } from "@/components/icons/gender" // We'll create these custom icons
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  Users,
+  UserCheck,
+  UserPlus,
+  Briefcase,
+  GraduationCap,
+  Baby,
+  HelpCircle,
+} from "lucide-react";
+import { MaleIcon, FemaleIcon } from "@/components/icons/sex"; // We'll create these custom icons
 
-
-
-const genderData = [
-  { name: "Male", value: 600, color: "#3b82f6" },  
-  { name: "Female", value: 400, color: "#ec4899" },  
-]
-
+const sexData = [
+  { name: "Male", value: 600, color: "#3b82f6" },
+  { name: "Female", value: 400, color: "#ec4899" },
+];
 
 const managementData = [
   { type: "Top Management", male: 30, female: 20 },
@@ -25,23 +56,27 @@ const managementData = [
   { type: "Technical", male: 180, female: 120 },
   { type: "Administrative", male: 100, female: 100 },
   { type: "Support", male: 150, female: 150 },
-]
+];
 
 const specialGroupsData = [
   { group: "Differently-Abled", male: 20, female: 15 },
   { group: "IP Groups", male: 30, female: 25 },
   { group: "Solo Parents", male: 40, female: 60 },
-]
+];
 
 const childrenData = [
   { category: "Below 7 Years", value: 400, color: "#ec4899" },
   { category: "7 Years and Above", value: 600, color: "#3b82f6" },
-]
+];
 
 const disabledChildrenData = [
   { category: "With Differently-Abled Children", value: 400, color: "#ec4899" },
-  { category: "Without Differently-Abled Children", value: 600, color: "#3b82f6" },
-]
+  {
+    category: "Without Differently-Abled Children",
+    value: 600,
+    color: "#3b82f6",
+  },
+];
 
 const employmentStatusData = [
   { status: "Permanent", male: 300, female: 250 },
@@ -49,7 +84,7 @@ const employmentStatusData = [
   { status: "Temporary", male: 50, female: 40 },
   { status: "Job Order", male: 150, female: 130 },
   { status: "Part-Time", male: 140, female: 160 },
-]
+];
 
 const civilStatusData = [
   { status: "Single", male: 200, female: 180 },
@@ -57,14 +92,14 @@ const civilStatusData = [
   { status: "Widowed", male: 30, female: 40 },
   { status: "Separated", male: 20, female: 30 },
   { status: "Other", male: 10, female: 50 },
-]
+];
 
 const educationalAttainmentData = [
   { level: "Bachelor's Degree", teaching: 200, nonTeaching: 150 },
   { level: "Master's Degree", teaching: 150, nonTeaching: 50 },
   { level: "Doctorate Degree", teaching: 100, nonTeaching: 20 },
   { level: "Others", teaching: 50, nonTeaching: 80 },
-]
+];
 
 function VisualGuide() {
   return (
@@ -124,50 +159,54 @@ function VisualGuide() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-
- 
 export default function PersonnelStatistics() {
-    const [showGuide, setShowGuide] = React.useState(false)
+  const [showGuide, setShowGuide] = React.useState(false);
 
   return (
-          <div className="space-y-4">
-        <Card className="bg-gray-900 border border-gray-800">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-2xl font-bold text-white">Personnel Statistics Dashboard</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowGuide(!showGuide)}
-              className="text-white border-white hover:bg-gray-700"
-            >
-              {showGuide ? "Hide Guide" : "Show Guide"}
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {showGuide && <VisualGuide />}
-  
+    <div className="space-y-4">
+      <Card className="bg-gray-900 border border-gray-800">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-2xl font-bold text-white">
+            Personnel Statistics Dashboard
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowGuide(!showGuide)}
+            className="text-white border-white hover:bg-gray-700"
+          >
+            {showGuide ? "Hide Guide" : "Show Guide"}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {showGuide && <VisualGuide />}
+
           <div className="grid grid-cols-2 gap-4">
             <Card className="bg-gray-800 border border-gray-700">
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-white">Number of Employees by Gender</CardTitle>
+                <CardTitle className="text-lg font-semibold text-white">
+                  Number of Employees by Gender
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={{}} className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={genderData}
+                        data={sexData}
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) =>
+                          `${name} ${(percent * 100).toFixed(0)}%`
+                        }
                       >
-                        {genderData.map((entry, index) => (
+                        {sexData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -179,7 +218,9 @@ export default function PersonnelStatistics() {
             </Card>
             <Card className="bg-gray-800 border border-gray-700">
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-white">Number of Employees per Management Type</CardTitle>
+                <CardTitle className="text-lg font-semibold text-white">
+                  Number of Employees per Management Type
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={{}} className="h-[300px]">
@@ -187,8 +228,8 @@ export default function PersonnelStatistics() {
                     <BarChart data={managementData}>
                       <XAxis dataKey="type" />
                       <YAxis />
-                      <Bar dataKey="male"  fill="#3b82f6" name="Male" />
-                      <Bar dataKey="female"  fill="#ec4899" name="Female" />
+                      <Bar dataKey="male" fill="#3b82f6" name="Male" />
+                      <Bar dataKey="female" fill="#ec4899" name="Female" />
                       <ChartTooltip content={<ChartTooltipContent />} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -200,18 +241,24 @@ export default function PersonnelStatistics() {
             {specialGroupsData.map((group, index) => (
               <Card key={index} className="bg-gray-800 border border-gray-700">
                 <CardHeader>
-                  <CardTitle className="text-sm font-semibold text-white">{group.group}</CardTitle>
+                  <CardTitle className="text-sm font-semibold text-white">
+                    {group.group}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex justify-between items-center">
                     <div className="text-center flex flex-col items-center bg-blue-600 p-2 rounded-lg">
                       <MaleIcon className="w-6 h-6 text-white mb-2" />
-                      <p className="text-xl font-bold text-white">{group.male}</p>
+                      <p className="text-xl font-bold text-white">
+                        {group.male}
+                      </p>
                       <p className="text-xs text-white">Male</p>
                     </div>
                     <div className="text-center flex flex-col items-center bg-pink-600 p-2 rounded-lg">
                       <FemaleIcon className="w-6 h-6 text-white mb-2" />
-                      <p className="text-xl font-bold text-white">{group.female}</p>
+                      <p className="text-xl font-bold text-white">
+                        {group.female}
+                      </p>
                       <p className="text-xs text-white">Female</p>
                     </div>
                   </div>
@@ -222,7 +269,9 @@ export default function PersonnelStatistics() {
           <div className="mt-4 grid grid-cols-2 gap-4">
             <Card className="bg-gray-800 border border-gray-700">
               <CardHeader>
-                <CardTitle className="text-sm font-semibold text-white">Employees with Children Below 7 Years Old</CardTitle>
+                <CardTitle className="text-sm font-semibold text-white">
+                  Employees with Children Below 7 Years Old
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={{}} className="h-[200px]">
@@ -250,7 +299,9 @@ export default function PersonnelStatistics() {
             </Card>
             <Card className="bg-gray-800 border border-gray-700">
               <CardHeader>
-                <CardTitle className="text-sm font-semibold text-white">Employees with Differently-Abled Children</CardTitle>
+                <CardTitle className="text-sm font-semibold text-white">
+                  Employees with Differently-Abled Children
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={{}} className="h-[200px]">
@@ -280,7 +331,9 @@ export default function PersonnelStatistics() {
           <div className="mt-4">
             <Card className="bg-gray-800 border border-gray-700">
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-white">Number of Employees per Employment Status</CardTitle>
+                <CardTitle className="text-lg font-semibold text-white">
+                  Number of Employees per Employment Status
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <Table className="text-white">
@@ -296,9 +349,15 @@ export default function PersonnelStatistics() {
                     {employmentStatusData.map((status, index) => (
                       <TableRow key={index}>
                         <TableCell>{status.status}</TableCell>
-                        <TableCell className="text-blue-500">{status.male}</TableCell>
-                        <TableCell className="text-pink-500">{status.female}</TableCell>
-                        <TableCell className="text-gray-400">{status.male + status.female}</TableCell>
+                        <TableCell className="text-blue-500">
+                          {status.male}
+                        </TableCell>
+                        <TableCell className="text-pink-500">
+                          {status.female}
+                        </TableCell>
+                        <TableCell className="text-gray-400">
+                          {status.male + status.female}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -309,7 +368,9 @@ export default function PersonnelStatistics() {
           <div className="mt-4">
             <Card className="bg-gray-800 border border-gray-700">
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-white">Number of Teaching Employees per Civil Status</CardTitle>
+                <CardTitle className="text-lg font-semibold text-white">
+                  Number of Teaching Employees per Civil Status
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <Table className="text-white">
@@ -325,9 +386,15 @@ export default function PersonnelStatistics() {
                     {civilStatusData.map((status, index) => (
                       <TableRow key={index}>
                         <TableCell>{status.status}</TableCell>
-                        <TableCell className="text-blue-500">{status.male}</TableCell>
-                        <TableCell className="text-pink-500">{status.female}</TableCell>
-                        <TableCell className="text-gray-400">{status.male + status.female}</TableCell>
+                        <TableCell className="text-blue-500">
+                          {status.male}
+                        </TableCell>
+                        <TableCell className="text-pink-500">
+                          {status.female}
+                        </TableCell>
+                        <TableCell className="text-gray-400">
+                          {status.male + status.female}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -338,7 +405,9 @@ export default function PersonnelStatistics() {
           <div className="mt-4">
             <Card className="bg-gray-800 border border-gray-700">
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-white">Number of Employees by Educational Attainment</CardTitle>
+                <CardTitle className="text-lg font-semibold text-white">
+                  Number of Employees by Educational Attainment
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <Table className="text-white">
@@ -356,7 +425,9 @@ export default function PersonnelStatistics() {
                         <TableCell>{level.level}</TableCell>
                         <TableCell>{level.teaching}</TableCell>
                         <TableCell>{level.nonTeaching}</TableCell>
-                        <TableCell>{level.teaching + level.nonTeaching}</TableCell>
+                        <TableCell>
+                          {level.teaching + level.nonTeaching}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -367,7 +438,9 @@ export default function PersonnelStatistics() {
           <div className="mt-4">
             <Card className="bg-gray-800 border border-gray-700">
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-white">Generate Report</CardTitle>
+                <CardTitle className="text-lg font-semibold text-white">
+                  Generate Report
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center space-x-4">
@@ -378,12 +451,20 @@ export default function PersonnelStatistics() {
                     <SelectContent>
                       <SelectItem value="all">All Employees</SelectItem>
                       <SelectItem value="solo-parents">Solo Parents</SelectItem>
-                      <SelectItem value="management">Management Type</SelectItem>
-                      <SelectItem value="differently-abled">Differently-Abled Employees</SelectItem>
-                      <SelectItem value="teaching-non-teaching">Teaching and Non-Teaching Staff</SelectItem>
+                      <SelectItem value="management">
+                        Management Type
+                      </SelectItem>
+                      <SelectItem value="differently-abled">
+                        Differently-Abled Employees
+                      </SelectItem>
+                      <SelectItem value="teaching-non-teaching">
+                        Teaching and Non-Teaching Staff
+                      </SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button className="bg-blue-500 hover:bg-blue-600 text-white">Submit</Button>
+                  <Button className="bg-blue-500 hover:bg-blue-600 text-white">
+                    Submit
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -391,5 +472,5 @@ export default function PersonnelStatistics() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

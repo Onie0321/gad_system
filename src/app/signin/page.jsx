@@ -74,7 +74,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row bg-gray-900 text-gray-320">
+    <div className="flex min-h-screen flex-col md:flex-row bg-gray-900 text-gray-270">
       <motion.div
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
@@ -82,28 +82,28 @@ export default function SignInPage() {
         className="flex flex-1 flex-col items-center justify-center p-8"
       >
        <div className="w-full max-w-md">
-        <h4 className="text-small font-bold text-center text-gray-200 mb-4">
+        <h4 className="text-2xl font-bold text-center text-yellow-200 mb-4">
           Aurora State College of Technology
         </h4>
-        <h1 className="text-xl font-bold text-center text-gray-200 mb-4">
+        <h1 className="text-4xl font-bold text-center text-white mb-4">
 Gender and Development         </h1>
         <div className="flex justify-center items-center space-x-4 mb-6">
           <img
             src="/logo/gad.png"
             alt="GAD Nexus Logo"
-            width={320}
-            height={320}
+            width={270}
+            height={270}
             className="object-contain"
           />
           <img
             src="/logo/ascot.png"
             alt="ASCOT Logo"
-            width={320}
-            height={320}
+            width={270}
+            height={270}
             className="object-contain"
           />
         </div>
-        <h1 className="text-4xl font-extrabold text-gray-100 text-center">
+        <h1 className="text-4xl font-extrabold text-white text-center">
           Welcome to GAD Nexus
         </h1>
         <p className="mt-4 text-lg text-center text-gray-400">
@@ -127,17 +127,18 @@ Gender and Development         </h1>
             >
               <UserCircle size={48} className="text-blue-400" />
             </motion.div>
-            <h2 className="mt-4 text-3xl font-extrabold">Sign In</h2>
+            <h2 className="mt-4 text-3xl text-white font-extrabold">Sign In</h2>
             <p className="mt-2 text-gray-400">Access your GAD Nexus account</p>
           </div>
           <form onSubmit={handleSignIn} className="mt-8 space-y-6">
-            <div className="space-y-4">
+            <div className="space-y-4 text-white">
               <div>
                 <Label htmlFor="email">Email Address</Label>
-                <div className="relative">
+                <div className="relative ' " >
                   <Input
                     id="email"
                     type="email"
+                    placeholder="Enter your Ascot email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -156,6 +157,7 @@ Gender and Development         </h1>
                     id="password"
                     type={showPassword ? "text" : "password"}
                     required
+                    placeholder="Enter your Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="bg-gray-700 border-gray-600 focus:ring-blue-500 focus:border-blue-500 pl-10 pr-10"
@@ -167,7 +169,7 @@ Gender and Development         </h1>
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-270"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -183,7 +185,7 @@ Gender and Development         </h1>
                 />
                 <label
                   htmlFor="remember"
-                  className="ml-2 block text-sm text-gray-300"
+                  className="ml-2 block text-sm text-white"
                 >
                   Remember this device
                 </label>
@@ -214,7 +216,7 @@ Gender and Development         </h1>
                 </span>
               </div>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="mt-6 text-white grid grid-cols-2 gap-3">
               <Button
                 variant="outline"
                 className="bg-gray-700 hover:bg-gray-600 transition-colors border-2 border-red-500"

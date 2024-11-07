@@ -2,31 +2,17 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Upload, FileUp, AlertCircle, Check, RefreshCw } from "lucide-react";
+import Upload from "./upload/page";
+import Mapping from "./mapping/page";
+import Validation from "./validation/page";
+import Settings from "./settings/page";
+import Confirm from "./confirm/page";
 
 export default function GoogleFormsImport() {
   const [currentStep, setCurrentStep] = useState("upload");
@@ -38,12 +24,9 @@ export default function GoogleFormsImport() {
     importSchedule: "daily",
   });
 
-  const handleFileUpload = (event) => {
-    const uploadedFile = event.target.files?.[0];
-    if (uploadedFile) {
-      setFile(uploadedFile);
-      setCurrentStep("mapping");
-    }
+  const handleFileUpload = (uploadedFile) => {
+    setFile(uploadedFile);
+    setCurrentStep("mapping");
   };
 
   const handleFieldMapping = (googleFormField, systemField) => {
