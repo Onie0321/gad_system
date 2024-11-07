@@ -9,10 +9,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import Upload from "./upload/page";
-import Mapping from "./mapping/page";
-import Validation from "./validation/page";
-import Settings from "./settings/page";
-import Confirm from "./confirm/page";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 
 export default function GoogleFormsImport() {
   const [currentStep, setCurrentStep] = useState("upload");

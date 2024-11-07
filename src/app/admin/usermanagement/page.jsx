@@ -49,6 +49,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { getAllUsers } from "../../../lib/appwrite";
+import { useCallback } from "react";
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -60,11 +61,7 @@ export default function UserManagement() {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -81,7 +78,11 @@ export default function UserManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleRetry = () => {
     fetchUsers();

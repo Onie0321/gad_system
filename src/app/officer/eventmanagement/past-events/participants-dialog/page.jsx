@@ -38,9 +38,8 @@ export default function ParticipantsList({
   const [sortDirection, setSortDirection] = useState("asc");
   const [filterSex, setFilterSex] = useState("all");
 
-  if (!event || !event.participants) return null;
-
   const filteredAndSortedParticipants = useMemo(() => {
+    if (!event.participants) return [];
     return event.participants
       .filter((participant) => {
         const matchesSearch = Object.values(participant).some(
@@ -62,11 +61,15 @@ export default function ParticipantsList({
   }, [event.participants, searchTerm, filterSex, sortColumn, sortDirection]);
 
   const totalMale = useMemo(() => {
-    return event.participants.filter((p) => p.sex === "Male").length;
+    return event.participants
+      ? event.participants.filter((p) => p.sex === "Male").length
+      : 0;
   }, [event.participants]);
 
   const totalFemale = useMemo(() => {
-    return event.participants.filter((p) => p.sex === "Female").length;
+    return event.participants
+      ? event.participants.filter((p) => p.sex === "Female").length
+      : 0;
   }, [event.participants]);
 
   const handleSort = (column) => {
@@ -247,8 +250,8 @@ export default function ParticipantsList({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-white">
-                    No participants available for this event.
+                  <TableCell colSpan={9} className="text-center text-pink-300">
+                    No participants found.
                   </TableCell>
                 </TableRow>
               )}
