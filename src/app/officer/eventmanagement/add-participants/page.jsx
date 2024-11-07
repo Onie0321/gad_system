@@ -20,12 +20,16 @@ import {
   getParticipantByStudentId,
 } from "@/lib/appwrite";
 import { validateStudentId } from "@/utils/StudentIdValidation"; // Import the validation function
+import PropTypes from "prop-types";
 
 export default function AddParticipants({
   selectedEvent,
   setEvents,
-  setSelectedEvent,
+  setSelectedEvent, // Ensure this is passed if used within the component
   setIsAddingParticipants,
+  newParticipant, // Define handling for this prop if needed
+  setNewParticipant, // Define handling for this prop if needed
+  handleAddParticipant, // Define handling for this prop if needed
 }) {
   const [newParticipant, setNewParticipant] = useState({
     studentId: "",
@@ -38,6 +42,17 @@ export default function AddParticipants({
     ethnicGroup: "",
     otherEthnicGroup: "",
   });
+
+  AddParticipants.propTypes = {
+    selectedEvent: PropTypes.object, // Adjust based on your specific needs
+    setEvents: PropTypes.func.isRequired,
+    setSelectedEvent: PropTypes.func, // Make it required if it's essential
+    setIsAddingParticipants: PropTypes.func.isRequired,
+    newParticipant: PropTypes.object, // Define these as per your requirements
+    setNewParticipant: PropTypes.func,
+    handleAddParticipant: PropTypes.func,
+  };
+
   const [hasAddedFirstParticipant, setHasAddedFirstParticipant] =
     useState(false);
   const [participantCount, setParticipantCount] = useState(0);
@@ -243,8 +258,14 @@ export default function AddParticipants({
             <Input
               id="studentId"
               value={newParticipant.studentId}
-              onChange={(e) => handleStudentIdChange(e.target.value)}
+              onChange={(e) =>
+                setNewParticipant({
+                  ...newParticipant,
+                  studentId: validateStudentId(e.target.value),
+                })
+              }
               className="bg-gray-700 border-blue-500 text-white"
+              disabled={!isAddingParticipantsLocal}
               placeholder="00-00-0000"
             />
             {studentIdWarning && (
@@ -262,13 +283,208 @@ export default function AddParticipants({
                 setNewParticipant({ ...newParticipant, name: e.target.value })
               }
               className="bg-gray-700 border-blue-500 text-white"
+              disabled={!isAddingParticipantsLocal}
+              placeholder="Enter your Name"
             />
             {nameWarning && (
               <p className="text-red-500 text-sm">{nameWarning}</p>
             )}
           </div>
-          <Button type="submit" className="bg-blue-500 text-white">
-            Add Participant
+          <div className="space-y-2">
+            <Label htmlFor="sex" className="text-blue-400">
+              Sex
+            </Label>
+            <Select
+              value={newParticipant.sex} // Bind select value to newParticipant state
+              onValueChange={(value) =>
+                setNewParticipant({ ...newParticipant, sex: value })
+              }
+              disabled={!isAddingParticipantsLocal}
+            >
+              <SelectTrigger
+                id="sex"
+                className="bg-gray-700 border-blue-500 text-white"
+              >
+                <SelectValue placeholder="Select Sex" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Male" disabled={selectedGenders.has("Male")}>
+                  Male
+                </SelectItem>
+                <SelectItem
+                  value="Female"
+                  disabled={selectedGenders.has("Female")}
+                >
+                  Female
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="age" className="text-blue-400">
+              Age
+            </Label>
+            <Input
+              id="age"
+              type="number"
+              value={newParticipant.age}
+              onChange={(e) =>
+                setNewParticipant({
+                  ...newParticipant,
+                  age: validateAge(e.target.value),
+                })
+              }
+              className="bg-gray-700 border-blue-500 text-white"
+              disabled={!isAddingParticipantsLocal}
+              placeholder="Enter your Age"
+              max="150"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="school" className="text-blue-400">
+              School
+            </Label>
+            <Select
+              value={newParticipant.school}
+              onValueChange={(value) =>
+                setNewParticipant({ ...newParticipant, school: value })
+              }
+              disabled={!isAddingParticipantsLocal}
+            >
+              <SelectTrigger
+                id="school"
+                className="bg-gray-700 border-blue-500 text-white"
+              >
+                <SelectValue placeholder="Select School" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ABM">
+                  School of Accountancy and Business Management
+                </SelectItem>
+                <SelectItem value="AS">
+                  School of Agricultural Science
+                </SelectItem>
+                <SelectItem value="AAS">School of Arts and Sciences</SelectItem>
+                <SelectItem value="ED">School of Education</SelectItem>
+                <SelectItem value="ENG">School of Engineering</SelectItem>
+                <SelectItem value="FOS">
+                  School of Fisheries and Oceanic Science
+                </SelectItem>
+                <SelectItem value="FES">
+                  School of Forestry and Environmental Sciences
+                </SelectItem>
+                <SelectItem value="IT">
+                  School of Industrial Technology
+                </SelectItem>
+                <SelectItem value="IT2">
+                  School of Information Technology
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="year" className="text-blue-400">
+              Year
+            </Label>
+            <Select
+              value={newParticipant.year}
+              onValueChange={(value) =>
+                setNewParticipant({ ...newParticipant, year: value })
+              }
+              disabled={!isAddingParticipantsLocal}
+            >
+              <SelectTrigger
+                id="year"
+                className="bg-gray-700 border-blue-500 text-white"
+              >
+                <SelectValue placeholder="Select Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="First">First Year</SelectItem>
+                <SelectItem value="Second">Second Year</SelectItem>
+                <SelectItem value="Third">Third Year</SelectItem>
+                <SelectItem value="Fourth">Fourth Year</SelectItem>
+                <SelectItem value="Fifth">Fifth Year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="section" className="text-blue-400">
+              Section
+            </Label>
+            <Input
+              id="section"
+              value={newParticipant.section}
+              onChange={(e) =>
+                setNewParticipant({
+                  ...newParticipant,
+                  section: e.target.value,
+                })
+              }
+              className="bg-gray-700 border-blue-500 text-white"
+              disabled={!isAddingParticipantsLocal}
+              placeholder="Enter your Section"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ethnicGroup" className="text-blue-400">
+              Ethnic Group
+            </Label>
+            <Select
+              value={newParticipant.ethnicGroup}
+              onValueChange={(value) =>
+                setNewParticipant({
+                  ...newParticipant,
+                  ethnicGroup: value,
+                  otherEthnicGroup: "",
+                })
+              }
+              disabled={!isAddingParticipantsLocal}
+            >
+              <SelectTrigger
+                id="ethnicGroup"
+                className="bg-gray-700 border-blue-500 text-white"
+              >
+                <SelectValue placeholder="Select Ethnic Group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Agta">Agta</SelectItem>
+                <SelectItem value="Ilokano">Ilokano</SelectItem>
+                <SelectItem value="Ibanag">Ibanag</SelectItem>
+                <SelectItem value="Ifugao">Ifugao</SelectItem>
+                <SelectItem value="Tagalog">Tagalog</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {newParticipant.ethnicGroup === "Other" && (
+            <div className="space-y-2">
+              <Label htmlFor="otherEthnicGroup" className="text-blue-400">
+                Specify Other Ethnic Group
+              </Label>
+              <Input
+                id="otherEthnicGroup"
+                value={newParticipant.otherEthnicGroup}
+                onChange={(e) =>
+                  setNewParticipant({
+                    ...newParticipant,
+                    otherEthnicGroup: e.target.value,
+                  })
+                }
+                className="bg-gray-700 border-blue-500 text-white"
+                disabled={!isAddingParticipantsLocal}
+                placeholder="Specify Other Ethnic Group"
+              />
+            </div>
+          )}
+          <Button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={!isAddingParticipantsLocal}
+          >
+            {hasAddedFirstParticipant
+              ? "Add Another Participant"
+              : "Add Participant"}
           </Button>
         </form>
         {isAddingParticipantsLocal && (
