@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -307,22 +308,21 @@ export default function AddParticipants({
           event.$id === selectedEvent.$id ? selectedEvent : event
         )
       );
-  
+
       setIsAddingParticipants(false);
       resetForm();
       setShowAlert(true); // Show alert when finishing
       setIsAddingParticipantsLocal(false); // Disable further additions
-  
+
       // Trigger the callback to fetch the latest events
       handleParticipantAddition(selectedEvent);
-  
+
       toast.success("Adding Participants Done");
     } else {
       // Show warning if no event is selected
       toast.error("Please add a new event before adding participants.");
     }
   };
-  
 
   const validateAge = (value) => {
     const parsedValue = Number(value);
@@ -375,7 +375,7 @@ export default function AddParticipants({
               disabled={!isAddingParticipantsLocal}
               placeholder="00-00-0000"
             />
-               {studentIdWarning && (
+            {studentIdWarning && (
               <p className="text-red-500 text-sm">{studentIdWarning}</p>
             )}
           </div>
@@ -393,7 +393,7 @@ export default function AddParticipants({
               disabled={!isAddingParticipantsLocal}
               placeholder="Enter your Name"
             />
-               {nameWarning && (
+            {nameWarning && (
               <p className="text-red-500 text-sm">{nameWarning}</p>
             )}
           </div>

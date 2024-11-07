@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
@@ -9,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
-import { signOut } from "../../../lib/appwrite"
+import { signOut } from "../../../lib/appwrite";
 
 export default function LogOutComponent() {
   const router = useRouter();
