@@ -1,10 +1,6 @@
+"use client";
 import React, { useState } from "react";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,7 +55,12 @@ export default function GoogleFormsImport() {
   };
 
   const mockGoogleFormFields = ["Name", "Email", "Age", "Favorite Color"];
-  const mockSystemFields = ["Full Name", "Email Address", "Age", "Preferred Color"];
+  const mockSystemFields = [
+    "Full Name",
+    "Email Address",
+    "Age",
+    "Preferred Color",
+  ];
 
   return (
     <div className="container mx-auto p-6 space-y-8 bg-gray-800 border border-blue-500 min-h-screen text-white rounded-lg shadow-2xl">
@@ -71,7 +72,10 @@ export default function GoogleFormsImport() {
         onValueChange={setCurrentStep}
         className="bg-black bg-opacity-30 p-6 rounded-xl backdrop-blur-md"
       >
-        <TabsList    variant="outline" className="grid w-full grid-cols-5 gap-2 bg-cyan-700 border-cyan-500 text-white transition-all duration-300">
+        <TabsList
+          variant="outline"
+          className="grid w-full grid-cols-5 gap-2 bg-cyan-700 border-cyan-500 text-white transition-all duration-300"
+        >
           {["upload", "mapping", "validation", "settings", "confirm"].map(
             (step) => (
               <TabsTrigger
@@ -103,14 +107,20 @@ export default function GoogleFormsImport() {
             className="hidden"
             onChange={handleFileUpload}
           />
-          {file && <p className="text-sm text-cyan-300">File uploaded: {file.name}</p>}
+          {file && (
+            <p className="text-sm text-cyan-300">File uploaded: {file.name}</p>
+          )}
         </TabsContent>
         <TabsContent value="mapping" className="space-y-4 mt-4">
-          <h3 className="text-2xl font-semibold mb-4 text-cyan-300">Map Fields</h3>
+          <h3 className="text-2xl font-semibold mb-4 text-cyan-300">
+            Map Fields
+          </h3>
           <Table className="bg-black bg-opacity-50 rounded-lg overflow-hidden">
             <TableHeader>
               <TableRow>
-                <TableHead className="text-cyan-300">Google Form Field</TableHead>
+                <TableHead className="text-cyan-300">
+                  Google Form Field
+                </TableHead>
                 <TableHead className="text-cyan-300">System Field</TableHead>
               </TableRow>
             </TableHeader>
@@ -119,7 +129,11 @@ export default function GoogleFormsImport() {
                 <TableRow key={field} className="border-b border-cyan-800">
                   <TableCell className="text-white">{field}</TableCell>
                   <TableCell>
-                    <Select onValueChange={(value) => handleFieldMapping(field, value)}>
+                    <Select
+                      onValueChange={(value) =>
+                        handleFieldMapping(field, value)
+                      }
+                    >
                       <SelectTrigger className="bg-transparent border-cyan-500 text-white">
                         <SelectValue placeholder="Select field" />
                       </SelectTrigger>
@@ -138,7 +152,9 @@ export default function GoogleFormsImport() {
           </Table>
         </TabsContent>
         <TabsContent value="validation" className="space-y-4 mt-4">
-          <h3 className="text-2xl font-semibold mb-4 text-cyan-300">Data Validation</h3>
+          <h3 className="text-2xl font-semibold mb-4 text-cyan-300">
+            Data Validation
+          </h3>
           <Table className="bg-black bg-opacity-50 rounded-lg overflow-hidden">
             <TableHeader>
               <TableRow>
@@ -160,19 +176,27 @@ export default function GoogleFormsImport() {
                 <TableCell>
                   <AlertCircle className="text-yellow-500" />
                 </TableCell>
-                <TableCell className="text-yellow-500">2 duplicate entries found</TableCell>
+                <TableCell className="text-yellow-500">
+                  2 duplicate entries found
+                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
         </TabsContent>
         <TabsContent value="settings" className="space-y-4 mt-4">
-          <h3 className="text-2xl font-semibold mb-4 text-cyan-300">Import Settings</h3>
+          <h3 className="text-2xl font-semibold mb-4 text-cyan-300">
+            Import Settings
+          </h3>
           <div className="space-y-4">
             <div>
               <Label htmlFor="duplicate-handling" className="text-white">
                 Handle Duplicate Records
               </Label>
-              <Select onValueChange={(value) => handleImportSettingsChange("duplicateHandling", value)}>
+              <Select
+                onValueChange={(value) =>
+                  handleImportSettingsChange("duplicateHandling", value)
+                }
+              >
                 <SelectTrigger
                   id="duplicate-handling"
                   className="bg-transparent border-cyan-500 text-white"
@@ -189,7 +213,9 @@ export default function GoogleFormsImport() {
             <div className="flex items-center space-x-2">
               <Switch
                 id="auto-sync"
-                onCheckedChange={(checked) => handleImportSettingsChange("autoSync", checked)}
+                onCheckedChange={(checked) =>
+                  handleImportSettingsChange("autoSync", checked)
+                }
                 className="bg-cyan-500"
               />
               <Label htmlFor="auto-sync" className="text-white">
@@ -200,7 +226,11 @@ export default function GoogleFormsImport() {
               <Label htmlFor="import-schedule" className="text-white">
                 Automated Import Schedule
               </Label>
-              <Select onValueChange={(value) => handleImportSettingsChange("importSchedule", value)}>
+              <Select
+                onValueChange={(value) =>
+                  handleImportSettingsChange("importSchedule", value)
+                }
+              >
                 <SelectTrigger
                   id="import-schedule"
                   className="bg-transparent border-cyan-500 text-white"
@@ -217,7 +247,9 @@ export default function GoogleFormsImport() {
           </div>
         </TabsContent>
         <TabsContent value="confirm" className="space-y-4 mt-4">
-          <h3 className="text-2xl font-semibold mb-4 text-cyan-300">Confirm Import</h3>
+          <h3 className="text-2xl font-semibold mb-4 text-cyan-300">
+            Confirm Import
+          </h3>
           <div className="space-y-2 text-white">
             <p>
               Records to be added: <span className="text-green-400">150</span>
@@ -233,12 +265,16 @@ export default function GoogleFormsImport() {
             <RefreshCw className="mr-2 h-4 w-4" /> Start Import
           </Button>
           <div className="mt-8">
-            <h4 className="text-xl font-semibold mb-2 text-cyan-300">Import History</h4>
+            <h4 className="text-xl font-semibold mb-2 text-cyan-300">
+              Import History
+            </h4>
             <Table className="bg-black bg-opacity-50 rounded-lg overflow-hidden">
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-cyan-300">Date</TableHead>
-                  <TableHead className="text-cyan-300">Records Imported</TableHead>
+                  <TableHead className="text-cyan-300">
+                    Records Imported
+                  </TableHead>
                   <TableHead className="text-cyan-300">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -269,7 +305,10 @@ export default function GoogleFormsImport() {
             </Button>
           </TooltipTrigger>
           <TooltipContent className="bg-black text-white border-cyan-500">
-            <p>Click for step-by-step guidance on importing Google Forms responses.</p>
+            <p>
+              Click for step-by-step guidance on importing Google Forms
+              responses.
+            </p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
