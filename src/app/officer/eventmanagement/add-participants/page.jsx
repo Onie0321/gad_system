@@ -25,24 +25,12 @@ import PropTypes from "prop-types";
 export default function AddParticipants({
   selectedEvent,
   setEvents,
-  setSelectedEvent, // Ensure this is passed if used within the component
+  setSelectedEvent,
   setIsAddingParticipants,
-  newParticipant, // Define handling for this prop if needed
-  setNewParticipant, // Define handling for this prop if needed
-  handleAddParticipant, // Define handling for this prop if needed
+  newParticipant,
+  setNewParticipant,
+  handleAddParticipant,
 }) {
-  const [newParticipant, setNewParticipant] = useState({
-    studentId: "",
-    name: "",
-    sex: "",
-    age: "",
-    school: "",
-    year: "",
-    section: "",
-    ethnicGroup: "",
-    otherEthnicGroup: "",
-  });
-
   AddParticipants.propTypes = {
     selectedEvent: PropTypes.object, // Adjust based on your specific needs
     setEvents: PropTypes.func.isRequired,
