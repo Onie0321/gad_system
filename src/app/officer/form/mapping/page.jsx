@@ -15,6 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const mockGoogleFormFields = ["Name", "Email", "Phone Number", "Address"];
+const mockSystemFields = ["Full Name", "Email Address", "Contact Number", "Location"];
+
+
 export default function Mapping({ onFieldMapping }) {
  
 

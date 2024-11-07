@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,11 +19,14 @@ import {
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format, differenceInHours, parse } from "date-fns";
 import { toast } from "react-toastify";
-import { createEvent, checkDuplicateEvent } from "../../../../lib/appwrite";
-import { getAcademicCategories, getNonAcademicCategories } from "@/utils/categories";
+import { createEvent, checkDuplicateEvent } from "@/lib/appwrite";
+import {
+  getAcademicCategories,
+  getNonAcademicCategories,
+} from "@/utils/categories";
 
-export default function AddEvent({ onEventCreated }) {
-    const [newEvent, setNewEvent] = useState({
+export default function AddEvent({ onEventCreated = () => {} }) {
+  const [newEvent, setNewEvent] = useState({
     name: "",
     date: "",
     timeFrom: "",
@@ -34,7 +37,8 @@ export default function AddEvent({ onEventCreated }) {
     numberOfHours: 0,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [formKey, setFormKey] = useState(0);
+  const [eventNameWarning, setEventNameWarning] = useState(""); // Warning state
   const academicCategories = getAcademicCategories();
   const nonAcademicCategories = getNonAcademicCategories();
 
@@ -63,25 +67,77 @@ export default function AddEvent({ onEventCreated }) {
   );
 
   const validateForm = () => {
-    const requiredFields = ["name", "date", "timeFrom", "timeTo", "venue", "type", "category"];
-    const missingFields = requiredFields.filter(field => !newEvent[field]);
+    const requiredFields = [
+      "name",
+      "date",
+      "timeFrom",
+      "timeTo",
+      "venue",
+      "type",
+      "category",
+    ];
+    const missingFields = requiredFields.filter((field) => !newEvent[field]);
     if (missingFields.length > 0) {
-      toast.error(`Please fill in all required fields: ${missingFields.join(", ")}`);
+      toast.error(
+        `Please fill in all required fields: ${missingFields.join(", ")}`
+      );
       return false;
     }
     return true;
   };
 
+  // Real-time validation using useEffect
+  useEffect(() => {
+    if (!newEvent.name) {
+      setEventNameWarning(""); // Clear warning if input is empty
+      return;
+    }
+
+    // Debounce mechanism
+    const timeoutId = setTimeout(async () => {
+      try {
+        const isDuplicate = await checkDuplicateEvent({
+          eventName: newEvent.name,
+        });
+        if (isDuplicate) {
+          setEventNameWarning("An event with this name already exists.");
+        } else {
+          setEventNameWarning(""); // Clear warning if no duplicate
+        }
+      } catch (error) {
+        console.error("Error checking event name:", error);
+      } finally {
+      }
+    }, 500); // 500ms debounce time
+
+    return () => clearTimeout(timeoutId); // Clear timeout on cleanup
+  }, [newEvent.name]);
+
+  const capitalizeWords = (text) => {
+    const smallWords = ["to", "the", "of", "and", "in", "on", "for"];
+    return text
+      .split(" ")
+      .map((word, index) => {
+        if (index === 0 || !smallWords.includes(word.toLowerCase())) {
+          return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        }
+        return word.toLowerCase();
+      })
+      .join(" ");
+  };
+
   const addEvent = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
-    if (!validateForm()) return;
+    if (!validateForm() || eventNameWarning) return;
 
     setIsSubmitting(true);
 
     try {
-      const isDuplicate = await checkDuplicateEvent({ eventName: newEvent.name });
-      
+      const isDuplicate = await checkDuplicateEvent({
+        eventName: newEvent.name,
+      });
+
       if (isDuplicate) {
         toast.error("An event with this name already exists.");
       } else {
@@ -109,6 +165,8 @@ export default function AddEvent({ onEventCreated }) {
           numberOfHours: 0,
         });
 
+        setFormKey((prevKey) => prevKey + 1);
+
         toast.success("Event created successfully!");
       }
     } catch (error) {
@@ -128,7 +186,7 @@ export default function AddEvent({ onEventCreated }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={addEvent} className="space-y-4">
+        <form onSubmit={addEvent} className="space-y-4" key={formKey}>
           <div className="space-y-2">
             <Label htmlFor="eventName" className="text-purple-300">
               Event Name
@@ -137,11 +195,18 @@ export default function AddEvent({ onEventCreated }) {
               id="eventName"
               value={newEvent.name}
               onChange={(e) =>
-                setNewEvent({ ...newEvent, name: e.target.value })
+                setNewEvent({
+                  ...newEvent,
+                  name: capitalizeWords(e.target.value),
+                })
               }
               className="bg-gray-700 border-purple-500 text-white"
+              placeholder="Enter event name"
               required
             />
+            {eventNameWarning && (
+              <p className="text-red-500 text-sm">{eventNameWarning}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="eventDate" className="text-purple-300">
@@ -164,9 +229,7 @@ export default function AddEvent({ onEventCreated }) {
               <PopoverContent className="w-auto p-0">
                 <CalendarComponent
                   mode="single"
-                  selected={
-                    newEvent.date ? new Date(newEvent.date) : undefined
-                  }
+                  selected={newEvent.date ? new Date(newEvent.date) : undefined}
                   onSelect={(date) =>
                     setNewEvent({
                       ...newEvent,
@@ -184,20 +247,16 @@ export default function AddEvent({ onEventCreated }) {
             </Label>
             <div className="flex space-x-2">
               <div className="flex-1">
-                <Label
-                  htmlFor="timeFrom"
-                  className="text-purple-300 text-sm"
-                >
+                <Label htmlFor="timeFrom" className="text-purple-300 text-sm">
                   From
                 </Label>
                 <Input
                   id="timeFrom"
                   type="time"
                   value={newEvent.timeFrom}
-                  onChange={(e) =>
-                    handleTimeChange("timeFrom", e.target.value)
-                  }
+                  onChange={(e) => handleTimeChange("timeFrom", e.target.value)}
                   className="bg-gray-700 border-purple-500 text-white"
+                  placeholder="Start time"
                   required
                 />
               </div>
@@ -209,10 +268,9 @@ export default function AddEvent({ onEventCreated }) {
                   id="timeTo"
                   type="time"
                   value={newEvent.timeTo}
-                  onChange={(e) =>
-                    handleTimeChange("timeTo", e.target.value)
-                  }
+                  onChange={(e) => handleTimeChange("timeTo", e.target.value)}
                   className="bg-gray-700 border-purple-500 text-white"
+                  placeholder="End time"
                   required
                 />
               </div>
@@ -228,6 +286,7 @@ export default function AddEvent({ onEventCreated }) {
               value={newEvent.numberOfHours}
               readOnly
               className="bg-gray-700 border-purple-500 text-white"
+              placeholder="Calculated automatically"
             />
           </div>
           <div className="space-y-2">
@@ -238,9 +297,13 @@ export default function AddEvent({ onEventCreated }) {
               id="eventVenue"
               value={newEvent.venue}
               onChange={(e) =>
-                setNewEvent({ ...newEvent, venue: e.target.value })
+                setNewEvent({
+                  ...newEvent,
+                  venue: capitalizeWords(e.target.value),
+                })
               }
               className="bg-gray-700 border-purple-500 text-white"
+              placeholder="Enter event venue"
               required
             />
           </div>
@@ -250,39 +313,46 @@ export default function AddEvent({ onEventCreated }) {
             </Label>
             <Select
               onValueChange={(value) =>
-                setNewEvent({ ...newEvent, type: value })
+                setNewEvent({ ...newEvent, type: value, category: "" })
               }
             >
               <SelectTrigger className="bg-gray-700 border-purple-500 text-white">
-                <SelectValue placeholder="Select type" />
+                <SelectValue placeholder="Select event type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Academic">Academic</SelectItem>
                 <SelectItem value="Non-Academic">Non-Academic</SelectItem>
               </SelectContent>
             </Select>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="eventCategory" className="text-purple-300">
-                Event Category
-              </Label>
-              <Select
-                onValueChange={(value) =>
-                  setNewEvent({ ...newEvent, category: value })
-                }
-              >
-                <SelectTrigger className="bg-gray-700 border-purple-500 text-white">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCategories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="eventCategory" className="text-purple-300">
+              Event Category
+            </Label>
+            <Select
+              onValueChange={(value) =>
+                setNewEvent({ ...newEvent, category: value })
+              }
+              disabled={!newEvent.type}
+            >
+              <SelectTrigger className="bg-gray-700 border-purple-500 text-white">
+                <SelectValue
+                  placeholder={
+                    newEvent.type
+                      ? "Select event category"
+                      : "Select event type first"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredCategories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Button

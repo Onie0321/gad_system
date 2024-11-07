@@ -11,9 +11,21 @@ import { getAcademicCategories, getNonAcademicCategories } from "@/utils/categor
 export default function EditEventDialog({ event, onOpenChange, onUpdateEvent }) {
   const [editingEvent, setEditingEvent] = useState(null);
 
+  // Helper function to format time to HH:MM
+  const formatTime = (timeString) => {
+    if (!timeString) return "";
+    const [hours, minutes] = timeString.split(":");
+    return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     if (event) {
-      setEditingEvent(event);
+      // Set formatted time values to ensure compatibility with <input type="time" />
+      setEditingEvent({
+        ...event,
+        eventTimeFrom: formatTime(event.eventTimeFrom),
+        eventTimeTo: formatTime(event.eventTimeTo),
+      });
     }
   }, [event]);
 

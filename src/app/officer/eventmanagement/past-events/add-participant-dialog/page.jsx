@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,20 +15,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "react-toastify";
 import {
   addParticipantToEvent,
   checkIfParticipantExists,
-} from "../../../../../lib/appwrite";
+  getParticipantByStudentId,
+} from "@/lib/appwrite";
 import { getAcademicCategories } from "@/utils/categories";
-import { toast } from "react-toastify"; // Import toast for showing messages
 
 export default function AddParticipantDialog({
   open,
   onOpenChange,
-  event, // Event object that contains event details, including name
+  event,
   onAddParticipant,
+  onFinish,
 }) {
   const [newParticipant, setNewParticipant] = useState({
+    studentId: "",
     name: "",
     sex: "",
     age: "",
@@ -39,70 +42,136 @@ export default function AddParticipantDialog({
     otherEthnicGroup: "",
   });
 
-  const [errors, setErrors] = useState({});
-  const [isAdded, setIsAdded] = useState(false); // Track if participant is added
-  const [submissionError, setSubmissionError] = useState(null); // Track submission errors
+  const [isAdded, setIsAdded] = useState(false);
+  const [participantCount, setParticipantCount] = useState(0);
+  const [maleCount, setMaleCount] = useState(0);
+  const [femaleCount, setFemaleCount] = useState(0);
+  const [newlyAddedMale, setNewlyAddedMale] = useState(0);
+  const [newlyAddedFemale, setNewlyAddedFemale] = useState(0);
 
-  // Validation function
-  const validateForm = () => {
-    const newErrors = {};
+  useEffect(() => {
+    if (event && event.participants) {
+      setParticipantCount(event.participants.length);
+      setMaleCount(event.participants.filter((p) => p.sex === "Male").length);
+      setFemaleCount(
+        event.participants.filter((p) => p.sex === "Female").length
+      );
+    }
+  }, [event]);
 
-    if (!newParticipant.name) newErrors.name = "Name is required";
-    if (!newParticipant.sex) newErrors.sex = "Sex is required";
-    if (!newParticipant.age || isNaN(parseInt(newParticipant.age)))
-      newErrors.age = "Valid age is required";
-    if (!newParticipant.school) newErrors.school = "School is required";
-    if (!newParticipant.year) newErrors.year = "Year is required";
-    if (!newParticipant.section) newErrors.section = "Section is required";
-    if (!newParticipant.ethnicGroup)
-      newErrors.ethnicGroup = "Ethnic group is required";
+  const handleStudentIdChange = async (value) => {
+    const numericValue = value.replace(/\D/g, "");
+    const formattedValue = numericValue
+      .slice(0, 8)
+      .replace(/(\d{2})(\d{2})(\d{4})?/, (match, p1, p2, p3) => {
+        let formatted = `${p1}-${p2}`;
+        if (p3) formatted += `-${p3}`;
+        return formatted;
+      });
+
+    setNewParticipant((prev) => ({ ...prev, studentId: formattedValue }));
+
+    if (formattedValue.length === 10) {
+      try {
+        const existingData = await getParticipantByStudentId(formattedValue);
+        if (existingData) {
+          setNewParticipant({
+            studentId: formattedValue,
+            name: existingData.name,
+            sex: existingData.sex,
+            age: existingData.age,
+            school: existingData.school,
+            year: existingData.year,
+            section: existingData.section,
+            ethnicGroup: existingData.ethnicGroup,
+            otherEthnicGroup: existingData.otherEthnicGroup || "",
+          });
+          toast.info("Fields auto-filled with previous participant data.");
+        }
+      } catch (error) {
+        console.error("Error fetching participant data:", error);
+        toast.error("Error fetching participant data. Please try again.");
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (newParticipant.studentId.length !== 10) {
+      toast.error("Student ID must be fully filled in the format 00-00-0000");
+      return;
+    }
+
+    const requiredFields = [
+      "studentId",
+      "name",
+      "sex",
+      "age",
+      "school",
+      "year",
+      "section",
+      "ethnicGroup",
+    ];
+    const missingFields = requiredFields.filter(
+      (field) => !newParticipant[field]
+    );
+
+    if (missingFields.length > 0) {
+      toast.error(
+        `Please fill in all required fields: ${missingFields.join(", ")}`
+      );
+      return;
+    }
+
     if (
       newParticipant.ethnicGroup === "Other" &&
       !newParticipant.otherEthnicGroup
-    )
-      newErrors.otherEthnicGroup = "Please specify the ethnic group";
-
-    return newErrors;
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // Clear submission error
-    setSubmissionError(null);
-
-    // Validate form inputs
-    const validationErrors = validateForm();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return; // Stop submission if validation fails
+    ) {
+      toast.error("Please specify the other ethnic group");
+      return;
     }
 
     try {
-      // Check if the participant already exists
-      const isParticipantExists = await checkIfParticipantExists(
+      const isDuplicateId = await checkIfParticipantExists(
         event.$id,
-        newParticipant.name
+        newParticipant.studentId,
+        ""
       );
-
-      if (isParticipantExists) {
-        // Show a toast message that participant is already added
-        toast.error("Participant with the same name is already added.");
+      if (isDuplicateId) {
+        toast.error(
+          "A participant with this Student ID already exists in this event."
+        );
         return;
       }
 
-      // Use event.$id as the event ID
+      const isDuplicateName = await checkIfParticipantExists(
+        event.$id,
+        "",
+        newParticipant.name
+      );
+      if (isDuplicateName) {
+        toast.error(
+          "A participant with this Name already exists in this event."
+        );
+        return;
+      }
+
       await addParticipantToEvent(event.$id, newParticipant);
       onAddParticipant();
-
-      // Show success toast notification
       toast.success("Participant added successfully!");
+      setIsAdded(true);
 
-      setIsAdded(true); // Set the state to indicate participant was added
+      setParticipantCount((prevCount) => prevCount + 1);
+      if (newParticipant.sex === "Male") {
+        setMaleCount((prev) => prev + 1);
+        setNewlyAddedMale((prev) => prev + 1);
+      } else if (newParticipant.sex === "Female") {
+        setFemaleCount((prev) => prev + 1);
+        setNewlyAddedFemale((prev) => prev + 1);
+      }
 
-      // Reset the form for adding another participant
       setNewParticipant({
+        studentId: "",
         name: "",
         sex: "",
         age: "",
@@ -112,46 +181,59 @@ export default function AddParticipantDialog({
         ethnicGroup: "",
         otherEthnicGroup: "",
       });
-      setErrors({}); // Clear errors after successful submission
     } catch (error) {
       console.error("Error adding participant:", error);
-      // Show error toast notification
       toast.error(
         "There was an error adding the participant. Please try again."
       );
     }
   };
 
-  const handleAddAnother = () => {
-    setIsAdded(false); // Reset the button and form for a new participant
-    onOpenChange(true);
+  const handleFinish = () => {
+    onFinish();
+    setNewlyAddedMale(0);
+    setNewlyAddedFemale(0);
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
             {isAdded
               ? `Add Another Participant to ${event?.eventName || "Event"}`
               : `Add Participant to ${event?.eventName || "Event"}`}
           </DialogTitle>
+          <div className="text-sm font-normal text-muted-foreground mt-2">
+            {(newlyAddedMale > 0 || newlyAddedFemale > 0) && (
+              <p className="text-green-600 font-semibold">
+                Newly added: Male: {newlyAddedMale} | Female: {newlyAddedFemale}
+              </p>
+            )}
+            <p>Total Participants: {participantCount}</p>
+            <p>
+              Male: {maleCount} | Female: {femaleCount}
+            </p>
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="mb-2">
+          <div className="space-y-4">
+            <Input
+              value={newParticipant.studentId}
+              onChange={(e) => handleStudentIdChange(e.target.value)}
+              placeholder="Student ID (00-00-0000)"
+            />
             <Input
               value={newParticipant.name}
               onChange={(e) =>
-                setNewParticipant({ ...newParticipant, name: e.target.value })
+                setNewParticipant({
+                  ...newParticipant,
+                  name: e.target.value,
+                })
               }
               placeholder="Name"
-              className="mb-1"
             />
-            {errors.name && (
-              <p className="text-red-500 text-sm">{errors.name}</p>
-            )}
-          </div>
-          <div className="mb-2">
             <Select
               value={newParticipant.sex}
               onValueChange={(value) =>
@@ -166,21 +248,17 @@ export default function AddParticipantDialog({
                 <SelectItem value="Female">Female</SelectItem>
               </SelectContent>
             </Select>
-            {errors.sex && <p className="text-red-500 text-sm">{errors.sex}</p>}
-          </div>
-          <div className="mb-2">
             <Input
               type="number"
               value={newParticipant.age}
               onChange={(e) =>
-                setNewParticipant({ ...newParticipant, age: e.target.value })
+                setNewParticipant({
+                  ...newParticipant,
+                  age: e.target.value,
+                })
               }
               placeholder="Age"
-              className="mb-1"
             />
-            {errors.age && <p className="text-red-500 text-sm">{errors.age}</p>}
-          </div>
-          <div className="mb-2">
             <Select
               value={newParticipant.school}
               onValueChange={(value) =>
@@ -198,11 +276,6 @@ export default function AddParticipantDialog({
                 ))}
               </SelectContent>
             </Select>
-            {errors.school && (
-              <p className="text-red-500 text-sm">{errors.school}</p>
-            )}
-          </div>
-          <div className="mb-2">
             <Select
               value={newParticipant.year}
               onValueChange={(value) =>
@@ -220,11 +293,6 @@ export default function AddParticipantDialog({
                 <SelectItem value="5">5th Year</SelectItem>
               </SelectContent>
             </Select>
-            {errors.year && (
-              <p className="text-red-500 text-sm">{errors.year}</p>
-            )}
-          </div>
-          <div className="mb-2">
             <Input
               value={newParticipant.section}
               onChange={(e) =>
@@ -234,13 +302,7 @@ export default function AddParticipantDialog({
                 })
               }
               placeholder="Section"
-              className="mb-1"
             />
-            {errors.section && (
-              <p className="text-red-500 text-sm">{errors.section}</p>
-            )}
-          </div>
-          <div className="mb-2">
             <Select
               value={newParticipant.ethnicGroup}
               onValueChange={(value) =>
@@ -259,12 +321,7 @@ export default function AddParticipantDialog({
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
-            {errors.ethnicGroup && (
-              <p className="text-red-500 text-sm">{errors.ethnicGroup}</p>
-            )}
-          </div>
-          {newParticipant.ethnicGroup === "Other" && (
-            <div className="mb-2">
+            {newParticipant.ethnicGroup === "Other" && (
               <Input
                 value={newParticipant.otherEthnicGroup}
                 onChange={(e) =>
@@ -274,27 +331,17 @@ export default function AddParticipantDialog({
                   })
                 }
                 placeholder="Specify Ethnic Group"
-                className="mb-1"
               />
-              {errors.otherEthnicGroup && (
-                <p className="text-red-500 text-sm">
-                  {errors.otherEthnicGroup}
-                </p>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            {isAdded ? (
-              <Button type="button" onClick={handleAddAnother}>
-                Add Another Participant
-              </Button>
-            ) : (
-              <Button type="submit">Add Participant</Button>
             )}
+          </div>
+          <DialogFooter className="mt-6 flex justify-between">
+            <Button type="submit">
+              {isAdded ? "Add Another Participant" : "Add Participant"}
+            </Button>
+            <Button type="button" onClick={handleFinish}>
+              Finished Adding Participant
+            </Button>
           </DialogFooter>
-          {submissionError && (
-            <p className="text-red-500 mt-2">{submissionError}</p>
-          )}
         </form>
       </DialogContent>
     </Dialog>

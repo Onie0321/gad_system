@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 
 export const MaleIcon = (props) => (
   <svg
@@ -18,7 +18,7 @@ export const MaleIcon = (props) => (
     <line x1="19" y1="5" x2="14" y2="5" />
     <line x1="19" y1="5" x2="19" y2="10" />
   </svg>
-)
+);
 
 export const FemaleIcon = (props) => (
   <svg
@@ -37,4 +37,4 @@ export const FemaleIcon = (props) => (
     <line x1="12" y1="13" x2="12" y2="21" />
     <line x1="9" y1="18" x2="15" y2="18" />
   </svg>
-)
+);

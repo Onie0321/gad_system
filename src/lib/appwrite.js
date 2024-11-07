@@ -16,7 +16,10 @@ export const appwriteConfig = {
   eventCollectionId: process.env.NEXT_PUBLIC_APPWRITE_EVENT_COLLECTION_ID,
   participantCollectionId:
     process.env.NEXT_PUBLIC_APPWRITE_PARTICIPANT_COLLECTION_ID,
-    responseCollectionId: process.env.NEXT_PUBLIC_APPWRITE_RESPONSES_COLLECTION_ID,
+  responseCollectionId:
+    process.env.NEXT_PUBLIC_APPWRITE_RESPONSES_COLLECTION_ID,
+  employeesCollectionId:
+    process.env.NEXT_PUBLIC_APPWRITE_EMPLOYEES_COLLECTION_ID,
 };
 
 const client = new Client();
@@ -208,6 +211,32 @@ export async function checkDuplicateEvent(eventData) {
   }
 }
 
+export async function editEvent(eventId, updatedEventData) {
+  try {
+    const updatedEvent = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.eventCollectionId,
+      eventId,
+      {
+        eventName: updatedEventData.eventName,
+        eventDate: updatedEventData.eventDate,
+        eventTimeFrom: updatedEventData.eventTimeFrom,
+        eventTimeTo: updatedEventData.eventTimeTo,
+        eventVenue: updatedEventData.eventVenue,
+        eventType: updatedEventData.eventType,
+        eventCategory: updatedEventData.eventCategory,
+        numberOfHours: updatedEventData.numberOfHours,
+        participants: updatedEventData.participants || [], // Keeps participants as provided
+      }
+    );
+
+    return updatedEvent; // Return the updated event object
+  } catch (error) {
+    console.error("Error updating event:", error);
+    throw new Error(`Error updating event: ${error.message}`);
+  }
+}
+
 // Fetch Events
 export async function fetchEvents() {
   try {
@@ -237,12 +266,16 @@ export async function addParticipantToEvent(eventId, participantData) {
     console.log("Participant Data:", participantData);
     console.log("EventId:", eventId);
 
-    // Create the participant document in the participants collection
-    const newParticipant = await databases.createDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.participantCollectionId,
-      ID.unique(), // Generate a unique document ID
+    let existingParticipant = await getParticipantByStudentId(participantData.studentId);
+
+    // If the participant does not exist, create a new document in the participants collection
+    if (!existingParticipant) {
+      existingParticipant = await databases.createDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.participantCollectionId,
+        ID.unique(),
       {
+        studentId: participantData.studentId,
         name: participantData.name,
         sex: participantData.sex,
         age: parseInt(participantData.age), // Ensure age is an integer
@@ -254,39 +287,41 @@ export async function addParticipantToEvent(eventId, participantData) {
         eventId: eventId, // Associate participant with the event
       }
     );
-
-    console.log("New participant added:", newParticipant);
-
-    // Fetch the event document to get its current participants array
-    const eventDocument = await databases.getDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.eventCollectionId,
-      eventId
-    );
-
-    console.log("Fetched event document:", eventDocument);
-
-    // Update the event's participants array (make sure participants is an array field in the event collection)
-    const updatedParticipants = [
-      ...(eventDocument.participants || []),
-      newParticipant.$id,
-    ];
-
-    // Update the event document with the new participants array
-    const updatedEvent = await databases.updateDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.eventCollectionId,
-      eventId,
-      { participants: updatedParticipants }
-    );
-
-    console.log("Updated event with new participants:", updatedEvent);
-
-    return updatedEvent; // Return the updated event document
-  } catch (error) {
-    console.error("Error adding participant to event:", error);
-    throw new Error(`Error adding participant to event: ${error.message}`);
+    console.log("New participant added:", existingParticipant);
+  } else {
+    console.log("Existing participant found:", existingParticipant);
   }
+
+  // Fetch the event document to get its current participants array
+  const eventDocument = await databases.getDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.eventCollectionId,
+    eventId
+  );
+
+  console.log("Fetched event document:", eventDocument);
+
+  // Update the event's participants array (make sure participants is an array field in the event collection)
+  const updatedParticipants = [
+    ...(eventDocument.participants || []),
+    existingParticipant.$id, // Add the participant's ID, either new or existing
+  ];
+
+  // Update the event document with the new participants array
+  const updatedEvent = await databases.updateDocument(
+    appwriteConfig.databaseId,
+    appwriteConfig.eventCollectionId,
+    eventId,
+    { participants: updatedParticipants }
+  );
+
+  console.log("Updated event with new participants:", updatedEvent);
+
+  return updatedEvent; // Return the updated event document
+} catch (error) {
+  console.error("Error adding participant to event:", error);
+  throw new Error(`Error adding participant to event: ${error.message}`);
+}
 }
 
 export async function fetchParticipants(eventId) {
@@ -295,28 +330,39 @@ export async function fetchParticipants(eventId) {
   }
 
   try {
+    // Fetch the event document first
     const eventDocument = await databases.getDocument(
       appwriteConfig.databaseId,
       appwriteConfig.eventCollectionId,
       eventId
     );
 
-    if (!eventDocument.participants || eventDocument.participants.length === 0) {
-      return []; // No participants found
+    if (
+      !eventDocument.participants ||
+      eventDocument.participants.length === 0
+    ) {
+      return []; // Return an empty array if no participants found
     }
 
     const participants = [];
-    // Fetch each participant by their ID
     for (const participantId of eventDocument.participants) {
-      const participant = await databases.getDocument(
-        appwriteConfig.databaseId,
-        appwriteConfig.participantCollectionId,
-        participantId
-      );
-      participants.push(participant);
+      try {
+        // Attempt to fetch each participant by ID
+        const participant = await databases.getDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.participantCollectionId,
+          participantId
+        );
+        participants.push(participant);
+      } catch (error) {
+        console.warn(
+          `Participant with ID ${participantId} not found and skipped.`
+        );
+        continue; // Skip this participant if the document is not found
+      }
     }
 
-    console.log("Fetched Participants:", participants); // Log the participant data for debugging
+    console.log("Fetched Participants:", participants);
     return participants;
   } catch (error) {
     console.error("Error fetching participants:", error);
@@ -326,11 +372,16 @@ export async function fetchParticipants(eventId) {
 
 export const uploadDataToAppwrite = async (excelData) => {
   const responseCollectionId = appwriteConfig.responseCollectionId;
-const databaseId = appwriteConfig.databaseId;
+  const databaseId = appwriteConfig.databaseId;
 
   try {
     for (const row of excelData) {
-      await databases.createDocument(databaseId, responseCollectionId, "unique()", row);
+      await databases.createDocument(
+        databaseId,
+        responseCollectionId,
+        "unique()",
+        row
+      );
     }
     console.log("Data uploaded successfully!");
   } catch (error) {
@@ -338,21 +389,109 @@ const databaseId = appwriteConfig.databaseId;
   }
 };
 
-export async function checkIfParticipantExists(eventId, name) {
+export async function checkIfParticipantExists(eventId, studentId, name) {
   try {
-    const response = await databases.listDocuments(
+    console.log("Checking if participant exists with:", {
+      eventId,
+      studentId,
+      name,
+    }); // Log inputs
+
+    // Check only for eventId and studentId first
+    const responseByStudentId = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.participantCollectionId,
-      [
-        Query.equal("name", name),
-        Query.equal("eventId", eventId), // Check within the same event
-      ]
+      [Query.equal("eventId", eventId), Query.equal("studentId", studentId)]
     );
 
-    return response.documents.length > 0; // Return true if a participant already exists
+    if (responseByStudentId.documents.length > 0) {
+      console.log("Duplicate Student ID found.");
+      return true;
+    }
+
+    // Check only for eventId and name next
+    const responseByName = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.participantCollectionId,
+      [Query.equal("eventId", eventId), Query.equal("name", name)]
+    );
+
+    if (responseByName.documents.length > 0) {
+      console.log("Duplicate Name found.");
+      return true;
+    }
+
+    // No duplicates found
+    return false;
   } catch (error) {
-    console.error("Error checking if participant exists:", error);
+    console.error("Detailed error checking if participant exists:", error);
     throw new Error("Error checking if participant exists");
   }
 }
 
+// In appwrite.js or your Appwrite utilities file
+export async function getParticipantByStudentId(studentId) {
+  try {
+    const response = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.participantCollectionId,
+      [Query.equal("studentId", studentId)]
+    );
+
+    if (response.documents.length > 0) {
+      return response.documents[0]; // Return the first matching document
+    } else {
+      return null; // Return null if no participant is found
+    }
+  } catch (error) {
+    console.error("Error fetching participant by studentId:", error);
+    throw new Error("Error fetching participant by studentId");
+  }
+}
+
+
+export async function checkDocumentExists(documentId) {
+  try {
+    const document = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.participantCollectionId, // Your collection ID
+      documentId
+    );
+    return document;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      console.error("Document not found.");
+    } else {
+      console.error("Error fetching document:", error);
+    }
+    return null;
+  }
+}
+
+// Fetch all events from the Appwrite database
+export async function fetchAllEvents() {
+  try {
+    const response = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.eventCollectionId
+    );
+    return response.documents; // Return the array of event documents
+  } catch (error) {
+    console.error("Error fetching events:", error);
+    throw new Error("Error fetching events");
+  }
+}
+
+// Fetch all participants from the Appwrite database
+export async function fetchAllParticipants() {
+  try {
+    const response = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.participantCollectionId
+    );
+    return response.documents; // Return the array of participant documents
+  } catch (error) {
+    console.error("Error fetching participants:", error);
+    throw new Error("Error fetching participants");
+  }
+}

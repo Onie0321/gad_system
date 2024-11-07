@@ -17,6 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
 import {
   Calendar,
@@ -36,6 +37,7 @@ import {
   createEvent,
   checkDuplicateEvent,
   fetchParticipants,
+  appwriteConfig,
 } from "../../../../lib/appwrite";
 import AddParticipantDialog from "./add-participant-dialog/page";
 import ParticipantsList from "./participants-dialog/page"; // Import your new ParticipantsDialog
@@ -44,12 +46,17 @@ import EditParticipantDialog from "./edit-participant-dialog/page";
 import ExportData from "./export-data/page";
 import RefreshButton from "./refresh-button/page";
 import ImportData from "./import-data/page";
+import DemographicAnalysis from "../demographic-analysis/page"; // Import DemographicAnalysis component
 import { parse } from "date-fns";
 import { enUS } from "date-fns/locale";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Import the toast styles
+import { Client } from "appwrite";
 
-export default function PastEvents() {
+const client = new Client();
+client.setEndpoint(appwriteConfig.endpoint).setProject(appwriteConfig.projectId);
+
+export default function PastEvents({ setSelectedEventForAnalysis }) {
   const [events, setEvents] = useState([]);
   const [sortColumn, setSortColumn] = useState("eventDate");
   const [sortDirection, setSortDirection] = useState("asc");
@@ -62,26 +69,103 @@ export default function PastEvents() {
   const [error, setError] = useState(null);
   const [showAddParticipant, setShowAddParticipant] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showDemographicDialog, setShowDemographicDialog] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState(null); // New state to store the event ID for analysis
+  const [showDemographicAnalysis, setShowDemographicAnalysis] = useState(false); // New state to toggle visibility
 
   const tableRef = useRef(null);
 
   useEffect(() => {
-    handleFetchEvents();
+    (async function fetchInitialEvents() {
+      setIsLoading(true);
+      try {
+        const data = await fetchEvents({ limit: 20 }); // Limit initial fetch to 20 events for speed
+        setEvents(data.map((event) => ({ ...event, participants: [] }))); // Start with participants as empty arrays
+      } catch (error) {
+        toast.error("Error loading events. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = client.subscribe(`databases.${appwriteConfig.databaseId}.collections.${appwriteConfig.participantCollectionId}.documents`, (response) => {
+      if (response.events.includes('databases.*.documents.*')) {
+        const participant = response.payload;
+
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event.$id === participant.eventId
+              ? { ...event, participants: [...event.participants, participant] }
+              : event
+          )
+        );
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe(); // Clean up subscription when the component unmounts
+    };
   }, []);
 
   const handleFetchEvents = async () => {
     setIsLoading(true);
     setError(null);
+  
     try {
       const data = await fetchEvents();
-      setEvents(data);
+      if (!data || data.length === 0) {
+        throw new Error("No events found");
+      }
+  
+      // Enrich each event with participant data and calculate counts
+      const enrichedData = await Promise.all(
+        data.map(async (event) => {
+          if (!event.$id) {
+            toast.error(`Event with missing ID encountered: ${event.eventName}`);
+            return {
+              ...event,
+              participants: [],
+              participantCount: 0,
+              maleCount: 0,
+              femaleCount: 0,
+            };
+          }
+  
+          try {
+            // Use the updated fetchParticipants function
+            const participants = await fetchParticipants(event.$id);
+  
+            // Calculate male and female participant counts
+            const maleCount = participants.filter((p) => p.sex === "Male").length;
+            const femaleCount = participants.filter((p) => p.sex === "Female").length;
+  
+            return {
+              ...event,
+              participants,
+              participantCount: participants.length,
+              maleCount,
+              femaleCount,
+            };
+          } catch (error) {
+            console.error(`Error fetching participants for event ID ${event.$id}:`, error);
+            toast.error(`Error fetching participants for event: ${event.eventName}`);
+            return {
+              ...event,
+              participants: [],
+              participantCount: 0,
+              maleCount: 0,
+              femaleCount: 0,
+            };
+          }
+        })
+      );
+  
+      setEvents(enrichedData); // Update the events state with enriched data
     } catch (error) {
       console.error("Error fetching events:", error);
-      setError(
-        `Failed to load events: ${error.message}. Please try again later.`
-      );
+      setError(error.message || "Failed to load events. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -124,6 +208,21 @@ export default function PastEvents() {
     return matchesSearch && matchesFilter;
   });
 
+  const abbreviateType = (type) => {
+    switch (type) {
+      case "Academic":
+        return "Aca";
+      case "Non-Academic":
+        return "Non-Aca";
+      default:
+        return type.substring(0, 3);
+    }
+  };
+
+  const abbreviateCategory = (category) => {
+    return category.length > 5 ? category.substring(0, 5) + "." : category;
+  };
+
   const handleShowParticipants = async (event) => {
     try {
       const participants = await fetchParticipants(event.id); // Use the new fetchParticipants function
@@ -133,6 +232,37 @@ export default function PastEvents() {
       console.error("Error fetching participants:", error);
     }
   };
+
+  const calculateTotals = () => {
+    const totalEvents = filteredEvents.length;
+    const totalParticipants = filteredEvents.reduce(
+      (sum, event) => sum + (event.participants?.length || 0),
+      0
+    );
+    const totalByType = filteredEvents.reduce((acc, event) => {
+      const shortType =
+        event.eventType === "Academic"
+          ? "Aca"
+          : event.eventType === "Non-Academic"
+          ? "Non-Aca"
+          : event.eventType.substring(0, 3);
+      acc[shortType] = (acc[shortType] || 0) + 1;
+      return acc;
+    }, {});
+
+    const totalByCategory = filteredEvents.reduce((acc, event) => {
+      const shortCategory =
+        event.eventCategory.length > 10
+          ? event.eventCategory.substring(0, 3) + "..."
+          : event.eventCategory;
+      acc[shortCategory] = (acc[shortCategory] || 0) + 1;
+      return acc;
+    }, {});
+
+    return { totalEvents, totalParticipants, totalByType, totalByCategory };
+  };
+
+  const totals = calculateTotals();
 
   const handleImportData = async (importedData) => {
     const parseDateTime = (dateTimeStr) => {
@@ -243,6 +373,18 @@ export default function PastEvents() {
     setEvents((prevEvents) => [...prevEvents, ...nonDuplicateEvents]);
   };
 
+  const handleParticipantAddition = (updatedEvent) => {
+    // Fetch updated events data
+    setEvents((prevEvents) =>
+      prevEvents.map((event) =>
+        event.$id === updatedEvent.$id ? updatedEvent : event
+      )
+    );
+    handleFetchEvents(); // Re-fetch events from Appwrite
+  };
+  
+
+  
   return (
     <Card className="w-full bg-gray-800 border-2 border-pink-500 rounded-xl overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -250,7 +392,12 @@ export default function PastEvents() {
           <Calendar className="inline-block mr-2" />
           Past Events
         </CardTitle>
-        <RefreshButton onClick={handleRefresh} isRefreshing={isRefreshing} />
+        <div className="flex items-center">
+          <span className=" text-pink-400 mr-4">
+            Total Events: {totals.totalEvents}
+          </span>
+          <RefreshButton onClick={handleRefresh} isRefreshing={isRefreshing} />
+        </div>
       </CardHeader>
       <CardContent>
         <div className="flex justify-between mb-4">
@@ -331,7 +478,7 @@ export default function PastEvents() {
                     className="cursor-pointer text-pink-300 sticky top-0 bg-gray-800"
                     onClick={() => sortEvents("participants")}
                   >
-                    Number of Participant{" "}
+                    Participant{" "}
                     {sortColumn === "participants" &&
                       (sortDirection === "asc" ? (
                         <ChevronUp className="inline w-4 h-4" />
@@ -363,8 +510,10 @@ export default function PastEvents() {
                       {event.eventCategory}
                     </TableCell>
                     <TableCell className="text-white">
-                      {event.participants?.length || 0}
+                      Total: {event.participantCount} (Male: {event.maleCount},
+                      Female: {event.femaleCount})
                     </TableCell>
+
                     <TableCell className="text-white">
                       <div className="flex space-x-2 justify-center">
                         <Button
@@ -409,9 +558,7 @@ export default function PastEvents() {
                         </Button>
 
                         <Button
-                          onClick={() => {
-                            // Implement demographic analysis functionality
-                          }}
+                          onClick={() => setSelectedEventForAnalysis(event.$id)} // Sets the ID for demographic analysis
                           className="bg-blue-600 hover:bg-blue-700"
                         >
                           <ChartColumnBig className="w-4 h-4" />
@@ -421,6 +568,32 @@ export default function PastEvents() {
                   </TableRow>
                 ))}
               </TableBody>
+              <TableFooter>
+                <TableRow className="bg-gray-900 font-bold">
+                  <TableCell className="text-white">Totals</TableCell>
+                  <TableCell className="text-white">-</TableCell>
+                  <TableCell className="text-white">
+                    {Object.entries(totals.totalByType).map(([type, count]) => (
+                      <div key={type}>
+                        {type}: {count}
+                      </div>
+                    ))}
+                  </TableCell>
+                  <TableCell className="text-white">
+                    {Object.entries(totals.totalByCategory).map(
+                      ([category, count]) => (
+                        <div key={category}>
+                          {category}: {count}
+                        </div>
+                      )
+                    )}
+                  </TableCell>
+                  <TableCell className="text-white">
+                    {totals.totalParticipants}
+                  </TableCell>
+                  <TableCell className="text-white">-</TableCell>
+                </TableRow>
+              </TableFooter>
             </Table>
           </div>
         </div>
@@ -432,6 +605,7 @@ export default function PastEvents() {
         onOpenChange={setShowAddParticipant}
         event={selectedEvent}
         onAddParticipant={handleFetchEvents}
+        handleParticipantAddition={handleParticipantAddition}
       />
 
       <EditEventDialog

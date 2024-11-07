@@ -1,10 +1,10 @@
-'use client'
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { Upload } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function ImportData({ onImport }) {
   const [file, setFile] = useState(null);
@@ -23,7 +23,7 @@ export default function ImportData({ onImport }) {
     const reader = new FileReader();
     reader.onload = (e) => {
       const data = e.target?.result;
-      const workbook = XLSX.read(data, { type: 'array' });
+      const workbook = XLSX.read(data, { type: "array" });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const json = XLSX.utils.sheet_to_json(worksheet);
@@ -48,7 +48,11 @@ export default function ImportData({ onImport }) {
         onChange={handleFileChange}
         className="bg-gray-700 border-pink-500 text-white"
       />
-      <Button onClick={handleImport} disabled={!file} className="bg-green-600 hover:bg-green-700">
+      <Button
+        onClick={handleImport}
+        disabled={!file}
+        className="bg-green-600 hover:bg-green-700"
+      >
         <Upload className="w-4 h-4 mr-2" />
         Import
       </Button>

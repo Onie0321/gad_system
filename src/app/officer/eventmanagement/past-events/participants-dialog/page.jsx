@@ -1,11 +1,24 @@
-"use client"
+"use client";
 
 import React, { useState, useMemo } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Users, Search, Download, Upload, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
@@ -13,9 +26,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
 
-export default function ParticipantsList({ event, onUpdateParticipant, onDeleteParticipant }) {
+export default function ParticipantsList({
+  event = { eventName: "Default Event", participants: [] },
+  onUpdateParticipant = () => {},
+  onDeleteParticipant = () => {},
+}) {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortColumn, setSortColumn] = useState("name");
   const [sortDirection, setSortDirection] = useState("asc");
@@ -27,17 +44,30 @@ export default function ParticipantsList({ event, onUpdateParticipant, onDeleteP
     return event.participants
       .filter((participant) => {
         const matchesSearch = Object.values(participant).some(
-          (value) => value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+          (value) =>
+            value &&
+            value.toString().toLowerCase().includes(searchTerm.toLowerCase())
         );
-        const matchesSexFilter = filterSex === "all" || participant.sex === filterSex;
+        const matchesSexFilter =
+          filterSex === "all" || participant.sex === filterSex;
         return matchesSearch && matchesSexFilter;
       })
       .sort((a, b) => {
-        if (a[sortColumn] < b[sortColumn]) return sortDirection === "asc" ? -1 : 1;
-        if (a[sortColumn] > b[sortColumn]) return sortDirection === "asc" ? 1 : -1;
+        if (a[sortColumn] < b[sortColumn])
+          return sortDirection === "asc" ? -1 : 1;
+        if (a[sortColumn] > b[sortColumn])
+          return sortDirection === "asc" ? 1 : -1;
         return 0;
       });
   }, [event.participants, searchTerm, filterSex, sortColumn, sortDirection]);
+
+  const totalMale = useMemo(() => {
+    return event.participants.filter((p) => p.sex === "Male").length;
+  }, [event.participants]);
+
+  const totalFemale = useMemo(() => {
+    return event.participants.filter((p) => p.sex === "Female").length;
+  }, [event.participants]);
 
   const handleSort = (column) => {
     setSortColumn(column);
@@ -73,7 +103,13 @@ export default function ParticipantsList({ event, onUpdateParticipant, onDeleteP
             <Users className="inline-block mr-2" />
             Participants for {event.eventName}
           </div>
-          <div className="text-lg">Total: {filteredAndSortedParticipants.length}</div>
+          <div className="text-lg space-x-4">
+            <span>
+              Total Participants: {filteredAndSortedParticipants.length}
+            </span>
+            <span>Male: {totalMale}</span>
+            <span>Female: {totalFemale}</span>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -99,7 +135,10 @@ export default function ParticipantsList({ event, onUpdateParticipant, onDeleteP
           </Select>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="bg-gray-700 border-pink-500 text-white">
+              <Button
+                variant="outline"
+                className="bg-gray-700 border-pink-500 text-white"
+              >
                 Actions
               </Button>
             </DropdownMenuTrigger>
@@ -108,7 +147,9 @@ export default function ParticipantsList({ event, onUpdateParticipant, onDeleteP
                 <Download className="w-4 h-4 mr-2" />
                 Export to Excel
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => document.getElementById('file-import').click()}>
+              <DropdownMenuItem
+                onClick={() => document.getElementById("file-import").click()}
+              >
                 <Upload className="w-4 h-4 mr-2" />
                 Import from Excel
               </DropdownMenuItem>
@@ -119,14 +160,30 @@ export default function ParticipantsList({ event, onUpdateParticipant, onDeleteP
             type="file"
             accept=".xlsx, .xls"
             onChange={importFromExcel}
-            style={{ display: 'none' }}
+            style={{ display: "none" }}
           />
         </div>
-        <div className="overflow-x-auto">
+        <div
+          className={`overflow-x-auto ${
+            filteredAndSortedParticipants.length > 5
+              ? "max-h-80 overflow-y-auto"
+              : ""
+          }`}
+        >
           <Table>
             <TableHeader>
               <TableRow>
-                {["Name", "Age", "Sex", "School", "Year", "Section", "Ethnic Group", "Actions"].map((header) => (
+                {[
+                  "Student ID",
+                  "Name",
+                  "Age",
+                  "Sex",
+                  "School",
+                  "Year",
+                  "Section",
+                  "Ethnic Group",
+                  "Actions",
+                ].map((header) => (
                   <TableHead
                     key={header}
                     className="text-pink-300 cursor-pointer"
@@ -141,13 +198,30 @@ export default function ParticipantsList({ event, onUpdateParticipant, onDeleteP
               {filteredAndSortedParticipants.length > 0 ? (
                 filteredAndSortedParticipants.map((participant, index) => (
                   <TableRow key={index} className="hover:bg-gray-700">
-                    <TableCell className="text-white">{participant.name}</TableCell>
-                    <TableCell className="text-white">{participant.age}</TableCell>
-                    <TableCell className="text-white">{participant.sex}</TableCell>
-                    <TableCell className="text-white">{participant.school}</TableCell>
-                    <TableCell className="text-white">{participant.year}</TableCell>
-                    <TableCell className="text-white">{participant.section}</TableCell>
-                    <TableCell className="text-white">{participant.ethnicGroup}</TableCell>
+                    <TableCell className="text-white">
+                      {participant.studentId}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {participant.name}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {participant.age}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {participant.sex}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {participant.school}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {participant.year}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {participant.section}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {participant.ethnicGroup}
+                    </TableCell>
                     <TableCell className="text-white">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -156,10 +230,14 @@ export default function ParticipantsList({ event, onUpdateParticipant, onDeleteP
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onUpdateParticipant(participant)}>
+                          <DropdownMenuItem
+                            onClick={() => onUpdateParticipant(participant)}
+                          >
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onDeleteParticipant(participant.id)}>
+                          <DropdownMenuItem
+                            onClick={() => onDeleteParticipant(participant.id)}
+                          >
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -169,7 +247,7 @@ export default function ParticipantsList({ event, onUpdateParticipant, onDeleteP
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-white">
+                  <TableCell colSpan={9} className="text-center text-white">
                     No participants available for this event.
                   </TableCell>
                 </TableRow>
