@@ -2,11 +2,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import AddEvent from './add-events/page';
+import AddEvent from "./add-events/page";
 import AddParticipants from "./add-participants/page";
 import PastEvents from "./past-events/page";
 import DemographicAnalysis from "./demographic-analysis/page";
-import { fetchEvents, addParticipantToEvent, deleteEventAPI } from "../../../lib/appwrite";
+import { fetchEvents, addParticipantToEvent } from "../../../lib/appwrite";
 
 export default function EventManagement() {
   const [events, setEvents] = useState([]);
@@ -24,10 +24,10 @@ export default function EventManagement() {
   const [sortColumn, setSortColumn] = useState("date");
   const [sortDirection, setSortDirection] = useState("asc");
   const [filterType, setFilterType] = useState("all");
-  const [selectedEventForAnalysis, setSelectedEventForAnalysis] = useState(null);
+  const [selectedEventForAnalysis, setSelectedEventForAnalysis] =
+    useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingEvent, setEditingEvent] = useState(null);
-  
 
   useEffect(() => {
     fetchEventData();
@@ -68,7 +68,11 @@ export default function EventManagement() {
         selectedEvent.$id,
         newParticipant
       );
-      setSelectedEvent(updatedEvent);
+      setEvents((prevEvents) =>
+        prevEvents.map((event) =>
+          event.$id === updatedEvent.$id ? updatedEvent : event
+        )
+      );
       setNewParticipant({
         name: "",
         sex: "",
@@ -120,15 +124,15 @@ export default function EventManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white p-8">
+    <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white p-8">
       <h1 className="text-4xl font-bold mb-8 text-center">Event Management</h1>
       <div className="grid grid-cols-3 gap-8">
-        <AddEvent 
+        <AddEvent
           onEventCreated={(createdEvent) => {
             setSelectedEvent(createdEvent);
             setIsAddingParticipants(true);
             fetchEventData(); // Refresh the events list
-          }} 
+          }}
         />
 
         <AddParticipants
@@ -139,7 +143,6 @@ export default function EventManagement() {
           handleAddParticipant={handleAddParticipant}
           setEvents={setEvents}
           setIsAddingParticipants={setIsAddingParticipants} // Pass this prop
-
         />
       </div>
       <div className="mt-8 space-y-8">
@@ -154,9 +157,15 @@ export default function EventManagement() {
           sortEvents={sortEvents}
           exportEventData={exportEventData}
           setEditingEvent={setEditingEvent}
-          handleShowDemographicAnalysis={handleShowDemographicAnalysis}
+          handleShowDemographicAnalysis={handleShowDemographicAnalysis} // Will update selectedEventForAnalysis when clicked
+          setSelectedEventForAnalysis={setSelectedEventForAnalysis} // Passing the function to update demographic analysis
+          
         />
-        <DemographicAnalysis selectedEventId={selectedEventForAnalysis?.id} />
+      </div>
+      <div className="mt-8 space-y-8">
+        {selectedEventForAnalysis && (
+          <DemographicAnalysis selectedEventId={selectedEventForAnalysis} />
+        )}
       </div>
 
       <ToastContainer limit={1} />

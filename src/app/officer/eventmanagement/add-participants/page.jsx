@@ -16,9 +16,11 @@ import { toast } from "react-toastify";
 import {
   addParticipantToEvent,
   checkIfParticipantExists,
+  getParticipantByStudentId,
 } from "@/lib/appwrite";
+import { validateStudentId } from "@/utils/StudentIdValidation"; // Import the validation function
 
-export default function Component({
+export default function AddParticipants({
   selectedEvent,
   setEvents,
   setSelectedEvent,
@@ -38,14 +40,14 @@ export default function Component({
   const [hasAddedFirstParticipant, setHasAddedFirstParticipant] =
     useState(false);
   const [participantCount, setParticipantCount] = useState(0);
-  const [maleCount, setMaleCount] = useState(0);   // Track male count
-const [femaleCount, setFemaleCount] = useState(0); // Track female count
+  const [maleCount, setMaleCount] = useState(0); // Track male count
+  const [femaleCount, setFemaleCount] = useState(0); // Track female count
   const [selectedGenders, setSelectedGenders] = useState(new Set());
   const [isAddingParticipantsLocal, setIsAddingParticipantsLocal] =
     useState(false);
-    const [showAlert, setShowAlert] = useState(false); // New state for alert
-
-    
+  const [showAlert, setShowAlert] = useState(false); // New state for alert
+  const [studentIdWarning, setStudentIdWarning] = useState("");
+  const [nameWarning, setNameWarning] = useState("");
 
   useEffect(() => {
     if (selectedEvent) {
@@ -55,6 +57,77 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
       setIsAddingParticipantsLocal(false);
     }
   }, [selectedEvent]);
+
+  // Real-time validation for Student ID
+  useEffect(() => {
+    const validateStudentId = async () => {
+      if (!newParticipant.studentId) {
+        setStudentIdWarning(""); // Clear warning if the input is empty
+        return;
+      }
+
+      try {
+        const exists = await checkIfParticipantExists(
+          selectedEvent.$id,
+          newParticipant.studentId,
+          ""
+        );
+
+        if (exists) {
+          setStudentIdWarning("This Student ID already exists.");
+          // Fetch the participant data for autofill option
+          const existingParticipant = await getParticipantByStudentId(
+            newParticipant.studentId
+          );
+
+          if (
+            existingParticipant &&
+            window.confirm(
+              "This Student ID is already associated with another event. Would you like to autofill this participant's information?"
+            )
+          ) {
+            // Autofill fields with the existing participant data
+            setNewParticipant({
+              ...existingParticipant, // Autofill all fields with fetched data
+              otherEthnicGroup: existingParticipant.otherEthnicGroup || "",
+            });
+            toast.info("Participant data autofilled successfully.");
+          }
+        } else {
+          setStudentIdWarning(""); // Clear warning if no duplicate found
+        }
+      } catch (error) {
+        console.error("Error checking Student ID:", error);
+      }
+    };
+    validateStudentId();
+  }, [newParticipant.studentId, selectedEvent]);
+
+  // Real-time validation for Name
+  useEffect(() => {
+    const validateName = async () => {
+      if (!newParticipant.name) {
+        setNameWarning(""); // Clear warning if the input is empty
+        return;
+      }
+
+      try {
+        const exists = await checkIfParticipantExists(
+          selectedEvent.$id,
+          "",
+          newParticipant.name
+        );
+        if (exists) {
+          setNameWarning("This Name already exists.");
+        } else {
+          setNameWarning("");
+        }
+      } catch (error) {
+        console.error("Error checking Name:", error);
+      }
+    };
+    validateName();
+  }, [newParticipant.name, selectedEvent]);
 
   const resetForm = () => {
     setNewParticipant({
@@ -70,15 +143,61 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
     });
   };
 
+  // Adjust handleStudentIdChange to log each step
+  const handleStudentIdChange = async (value) => {
+    // Set the entered studentId
+    setNewParticipant((prev) => ({ ...prev, studentId: value }));
+
+    if (validateStudentId(value)) {
+      try {
+        // Attempt to fetch the participant by studentId
+        console.log(`Fetching data for studentId: ${value}`);
+        const existingParticipant = await getParticipantByStudentId(value);
+
+        // Check if data was returned and update state if so
+        if (existingParticipant) {
+          console.log("Fetched participant data:", existingParticipant);
+
+          // Populate the form with existing participant data
+          setNewParticipant({
+            ...newParticipant, // Retain other fields
+            studentId: existingParticipant.studentId,
+            name: existingParticipant.name,
+            sex: existingParticipant.sex,
+            age: existingParticipant.age,
+            school: existingParticipant.school,
+            year: existingParticipant.year,
+            section: existingParticipant.section,
+            ethnicGroup: existingParticipant.ethnicGroup,
+            otherEthnicGroup: existingParticipant.otherEthnicGroup || "",
+          });
+
+          toast.info(
+            "Participant data pre-filled based on previous attendance"
+          );
+        } else {
+          console.log("No existing participant found for this studentId.");
+        }
+      } catch (error) {
+        console.error("Error fetching participant data:", error);
+        toast.error("Error fetching participant data. Please try again.");
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (studentIdWarning || nameWarning) {
+      toast.error("Please resolve the warnings before adding the participant.");
+      return;
+    }
 
     const studentIdPattern = /^\d{2}-\d{2}-\d{4}$/;
     if (!studentIdPattern.test(newParticipant.studentId)) {
       toast.error("Student ID must follow the format XX-XX-XXXX");
       return;
     }
-  
 
     if (!selectedEvent || !selectedEvent.$id) {
       toast.error(
@@ -123,21 +242,25 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
         newParticipant.studentId,
         ""
       );
-  
+
       if (isStudentIdDuplicate) {
-        toast.error("A participant with this Student ID already exists in this event.");
+        toast.error(
+          "A participant with this Student ID already exists in this event."
+        );
         return;
       }
-  
+
       // Check for duplicate Name
       const isNameDuplicate = await checkIfParticipantExists(
         selectedEvent.$id,
         "",
         newParticipant.name
       );
-  
+
       if (isNameDuplicate) {
-        toast.error("A participant with this Name already exists in this event.");
+        toast.error(
+          "A participant with this Name already exists in this event."
+        );
         return;
       }
 
@@ -156,18 +279,16 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
         )
       );
 
-      
-
       resetForm(); // Reset input fields
       setHasAddedFirstParticipant(true); // Update button text
       setParticipantCount((prevCount) => prevCount + 1);
 
-       // Increment male or female count based on selected gender
-    if (newParticipant.sex === "Male") {
-      setMaleCount((prevMaleCount) => prevMaleCount + 1);
-    } else if (newParticipant.sex === "Female") {
-      setFemaleCount((prevFemaleCount) => prevFemaleCount + 1);
-    }
+      // Increment male or female count based on selected gender
+      if (newParticipant.sex === "Male") {
+        setMaleCount((prevMaleCount) => prevMaleCount + 1);
+      } else if (newParticipant.sex === "Female") {
+        setFemaleCount((prevFemaleCount) => prevFemaleCount + 1);
+      }
 
       toast.success("Participant added successfully!");
     } catch (error) {
@@ -180,45 +301,40 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
 
   const finishAddingParticipants = () => {
     if (selectedEvent) {
+      // Update the events list in PastEvents
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
           event.$id === selectedEvent.$id ? selectedEvent : event
         )
       );
-
+  
       setIsAddingParticipants(false);
       resetForm();
       setShowAlert(true); // Show alert when finishing
       setIsAddingParticipantsLocal(false); // Disable further additions
+  
+      // Trigger the callback to fetch the latest events
+      handleParticipantAddition(selectedEvent);
+  
       toast.success("Adding Participants Done");
     } else {
       // Show warning if no event is selected
       toast.error("Please add a new event before adding participants.");
     }
   };
+  
+
   const validateAge = (value) => {
     const parsedValue = Number(value);
-    return !isNaN(parsedValue) &&
+    if (
+      !isNaN(parsedValue) &&
       parsedValue > 0 &&
       Number.isInteger(parsedValue)
-      ? parsedValue
-      : "";
-  };
-
-  const validateStudentId = (value) => {
-    // Remove all non-digit characters
-    const onlyNumbers = value.replace(/\D/g, "");
-  
-    // Format based on length
-    if (onlyNumbers.length <= 2) {
-      return onlyNumbers;
-    } else if (onlyNumbers.length <= 4) {
-      return `${onlyNumbers.slice(0, 2)}-${onlyNumbers.slice(2)}`;
-    } else if (onlyNumbers.length <= 8) {
-      return `${onlyNumbers.slice(0, 2)}-${onlyNumbers.slice(2, 4)}-${onlyNumbers.slice(4)}`;
-    } else {
-      return `${onlyNumbers.slice(0, 2)}-${onlyNumbers.slice(2, 4)}-${onlyNumbers.slice(4, 8)}`;
+    ) {
+      // Limit to 3 digits
+      return String(parsedValue).slice(0, 3);
     }
+    return "";
   };
 
   return (
@@ -234,11 +350,11 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
           </p>
         )}
         {selectedEvent && (
-         <p className="text-blue-300 mt-2">
-         Total Participants: {participantCount} (Male: {maleCount}, Female: {femaleCount})
-       </p>
+          <p className="text-blue-300 mt-2">
+            Total Participants: {participantCount} (Male: {maleCount}, Female:{" "}
+            {femaleCount})
+          </p>
         )}
-       
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -257,8 +373,11 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
               }
               className="bg-gray-700 border-blue-500 text-white"
               disabled={!isAddingParticipantsLocal}
-              placeholder="21-01-2098"
+              placeholder="00-00-0000"
             />
+               {studentIdWarning && (
+              <p className="text-red-500 text-sm">{studentIdWarning}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="name" className="text-blue-400">
@@ -274,6 +393,9 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
               disabled={!isAddingParticipantsLocal}
               placeholder="Enter your Name"
             />
+               {nameWarning && (
+              <p className="text-red-500 text-sm">{nameWarning}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="sex" className="text-blue-400">
@@ -322,6 +444,7 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
               className="bg-gray-700 border-blue-500 text-white"
               disabled={!isAddingParticipantsLocal}
               placeholder="Enter your Age"
+              max="150"
             />
           </div>
           <div className="space-y-2">
@@ -329,7 +452,7 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
               School
             </Label>
             <Select
-            value={newParticipant.school}
+              value={newParticipant.school}
               onValueChange={(value) =>
                 setNewParticipant({ ...newParticipant, school: value })
               }
@@ -371,7 +494,7 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
               Year
             </Label>
             <Select
-            value={newParticipant.year}
+              value={newParticipant.year}
               onValueChange={(value) =>
                 setNewParticipant({ ...newParticipant, year: value })
               }
@@ -415,7 +538,7 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
               Ethnic Group
             </Label>
             <Select
-            value={newParticipant.ethnicGroup}
+              value={newParticipant.ethnicGroup}
               onValueChange={(value) =>
                 setNewParticipant({
                   ...newParticipant,
@@ -479,7 +602,7 @@ const [femaleCount, setFemaleCount] = useState(0); // Track female count
             Finish Adding Participants
           </Button>
         )}
-         {!isAddingParticipantsLocal && showAlert && (
+        {!isAddingParticipantsLocal && showAlert && (
           <Alert variant="destructive" className="mt-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Warning</AlertTitle>

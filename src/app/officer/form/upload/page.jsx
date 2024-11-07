@@ -5,19 +5,22 @@ import { Upload, FileUp } from "lucide-react";
 import { uploadDataToAppwrite } from "../../../../lib/appwrite"; // Import the function
 
 export default function Uploads({ onFileUpload }) {
-  const handleFileUpload = async (event) => {
-    const uploadedFile = event.target.files?.[0];
-    if (uploadedFile) {
-      // Use FileReader to read CSV file
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const fileContent = e.target.result;
-        const csvData = parseCSV(fileContent); // Function to parse CSV
-        await uploadDataToAppwrite(csvData); // Call function to upload to Appwrite
-      };
-      reader.readAsText(uploadedFile);
-    }
-  };
+ const handleFileUpload = async (event) => {
+  const uploadedFile = event.target.files?.[0];
+  console.log("File selected:", uploadedFile); // Check if the file is detected
+  if (uploadedFile) {
+    // Use FileReader to read CSV file
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const fileContent = e.target.result;
+      console.log("File content:", fileContent); // Log the CSV content
+      const csvData = parseCSV(fileContent); // Function to parse CSV
+      await uploadDataToAppwrite(csvData); // Call function to upload to Appwrite
+    };
+    reader.readAsText(uploadedFile);
+  }
+};
+
 
   const handleGoogleFormImport = async () => {
     const googleFormData = await fetchGoogleFormData(); // Fetch from Google Forms
@@ -53,12 +56,20 @@ export default function Uploads({ onFileUpload }) {
 
 // Function to parse CSV content
 function parseCSV(csvContent) {
-  const lines = csvContent.split("\n");
-  const headers = lines[0].split(",");
-  const row = {};
-headers.forEach((header, index) => {
-  // Ensure header and values[index] are defined before calling trim
-  row[header?.trim() ?? header] = values[index]?.trim() ?? values[index];
-});
-return row;
+  const lines = csvContent.split("\n").filter(line => line.trim() !== ""); // Remove empty lines
+  const headers = lines[0].split(",").map(header => header.trim()); // Get headers and trim whitespace
+
+  const data = lines.slice(1).map(line => {
+    const values = line.split(",").map(value => value.trim()); // Split each line into values
+    const row = {};
+
+    headers.forEach((header, index) => {
+      row[header] = values[index] ?? ""; // Map each header to the corresponding value
+    });
+
+    return row;
+  });
+
+  return data;
 }
+
