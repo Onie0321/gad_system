@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import DemographicAnalysis from "../demographic-analysis/page";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,7 +32,6 @@ import {
   RefreshCw,
   PlusCircle,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import {
   fetchEvents,
   createEvent,
