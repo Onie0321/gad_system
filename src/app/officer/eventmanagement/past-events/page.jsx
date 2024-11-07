@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import DemographicAnalysis from "../demographic-analysis/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,11 +24,9 @@ import {
   ChevronDown,
   ChevronUp,
   Search,
-  Download,
   Edit,
   Users,
   ChartColumnBig,
-  RefreshCw,
   PlusCircle,
 } from "lucide-react";
 import {
@@ -46,7 +43,6 @@ import EditParticipantDialog from "./edit-participant-dialog/page";
 import ExportData from "./export-data/page";
 import RefreshButton from "./refresh-button/page";
 import ImportData from "./import-data/page";
-import DemographicAnalysis from "../demographic-analysis/page"; // Import DemographicAnalysis component
 import { parse } from "date-fns";
 import { enUS } from "date-fns/locale";
 import { toast, ToastContainer } from "react-toastify";
