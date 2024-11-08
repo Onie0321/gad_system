@@ -137,12 +137,10 @@ export default function EventManagement() {
 
         <AddParticipants
           selectedEvent={selectedEvent}
-          newParticipant={newParticipant}
-          setNewParticipant={setNewParticipant}
           isAddingParticipants={isAddingParticipants}
           handleAddParticipant={handleAddParticipant}
           setEvents={setEvents}
-          setIsAddingParticipants={setIsAddingParticipants} // Pass this prop
+          setIsAddingParticipants={setIsAddingParticipants}
         />
       </div>
       <div className="mt-8 space-y-8">
@@ -159,7 +157,6 @@ export default function EventManagement() {
           setEditingEvent={setEditingEvent}
           handleShowDemographicAnalysis={handleShowDemographicAnalysis} // Will update selectedEventForAnalysis when clicked
           setSelectedEventForAnalysis={setSelectedEventForAnalysis} // Passing the function to update demographic analysis
-          
         />
       </div>
       <div className="mt-8 space-y-8">

@@ -27,10 +27,19 @@ export default function AddParticipants({
   setEvents,
   setSelectedEvent,
   setIsAddingParticipants,
-  newParticipant,
-  setNewParticipant,
   handleAddParticipant,
 }) {
+  const [newParticipant, setNewParticipant] = useState({
+    studentId: "",
+    name: "",
+    sex: "",
+    age: "",
+    school: "",
+    year: "",
+    section: "",
+    ethnicGroup: "",
+    otherEthnicGroup: "",
+  });
   const [hasAddedFirstParticipant, setHasAddedFirstParticipant] =
     useState(false);
   const [participantCount, setParticipantCount] = useState(0);
@@ -487,13 +496,10 @@ export default function AddParticipants({
   );
 }
 
-// Properly define PropTypes outside the function
 AddParticipants.propTypes = {
-  selectedEvent: PropTypes.object, // Use PropTypes.shape() for more specific object shapes
+  selectedEvent: PropTypes.object, // Consider using PropTypes.shape() for more specific validation
   setEvents: PropTypes.func.isRequired,
-  setSelectedEvent: PropTypes.func,
+  setSelectedEvent: PropTypes.func.isRequired,
   setIsAddingParticipants: PropTypes.func.isRequired,
-  newParticipant: PropTypes.object, // Use PropTypes.shape() for more specific object shapes
-  setNewParticipant: PropTypes.func,
-  handleAddParticipant: PropTypes.func,
+  handleAddParticipant: PropTypes.func.isRequired,
 };
