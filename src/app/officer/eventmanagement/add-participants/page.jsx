@@ -31,16 +31,6 @@ export default function AddParticipants({
   setNewParticipant,
   handleAddParticipant,
 }) {
-  AddParticipants.propTypes = {
-    selectedEvent: PropTypes.object, // Adjust based on your specific needs
-    setEvents: PropTypes.func.isRequired,
-    setSelectedEvent: PropTypes.func, // Make it required if it's essential
-    setIsAddingParticipants: PropTypes.func.isRequired,
-    newParticipant: PropTypes.object, // Define these as per your requirements
-    setNewParticipant: PropTypes.func,
-    handleAddParticipant: PropTypes.func,
-  };
-
   const [hasAddedFirstParticipant, setHasAddedFirstParticipant] =
     useState(false);
   const [participantCount, setParticipantCount] = useState(0);
@@ -496,3 +486,14 @@ export default function AddParticipants({
     </Card>
   );
 }
+
+// Properly define PropTypes outside the function
+AddParticipants.propTypes = {
+  selectedEvent: PropTypes.object, // Use PropTypes.shape() for more specific object shapes
+  setEvents: PropTypes.func.isRequired,
+  setSelectedEvent: PropTypes.func,
+  setIsAddingParticipants: PropTypes.func.isRequired,
+  newParticipant: PropTypes.object, // Use PropTypes.shape() for more specific object shapes
+  setNewParticipant: PropTypes.func,
+  handleAddParticipant: PropTypes.func,
+};
