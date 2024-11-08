@@ -22,7 +22,7 @@ import {
 import { validateStudentId } from "@/utils/StudentIdValidation"; // Import the validation function
 import PropTypes from "prop-types";
 
-export default function AddParticipants({
+function AddParticipants({
   selectedEvent,
   setEvents,
   setSelectedEvent,
@@ -503,3 +503,5 @@ AddParticipants.propTypes = {
   setIsAddingParticipants: PropTypes.func.isRequired,
   handleAddParticipant: PropTypes.func.isRequired,
 };
+
+export default AddParticipants;
