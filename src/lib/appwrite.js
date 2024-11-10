@@ -7,7 +7,8 @@ import {
   Query,
   Realtime,
   Storage,
-  Permission, Role,
+  Permission,
+  Role,
 } from "appwrite";
 
 export const appwriteConfig = {
@@ -22,17 +23,12 @@ export const appwriteConfig = {
     process.env.NEXT_PUBLIC_APPWRITE_RESPONSES_COLLECTION_ID,
   employeesCollectionId:
     process.env.NEXT_PUBLIC_APPWRITE_EMPLOYEES_COLLECTION_ID,
-    exceluploadsCollectionId:
+  exceluploadsCollectionId:
     process.env.NEXT_PUBLIC_APPWRITE_EXCELUPLOADS_COLLECTION_ID,
-    newsCollectionId:
-    process.env.NEXT_PUBLIC_APPWRITE_NEWS_COLLECTION_ID,
-    messagesCollectionId:
-    process.env.NEXT_PUBLIC_APPWRITE_MESSAGES_COLLECTION_ID,
-    archivesCollectionId:
-    process.env.NEXT_PUBLIC_APPWRITE_ARCHIVES_COLLECTION_ID,
-    servicesCollectionId:
-    process.env.NEXT_PUBLIC_APPWRITE_SERVICES_COLLECTION_ID,
-
+  newsCollectionId: process.env.NEXT_PUBLIC_APPWRITE_NEWS_COLLECTION_ID,
+  messagesCollectionId: process.env.NEXT_PUBLIC_APPWRITE_MESSAGES_COLLECTION_ID,
+  archivesCollectionId: process.env.NEXT_PUBLIC_APPWRITE_ARCHIVES_COLLECTION_ID,
+  servicesCollectionId: process.env.NEXT_PUBLIC_APPWRITE_SERVICES_COLLECTION_ID,
 };
 
 const client = new Client();
@@ -69,8 +65,6 @@ export async function createUser(email, password, name, role = "admin") {
       }
     );
 
-    
-
     // Sign in the new user
     const session = await account.createEmailPasswordSession(email, password);
     if (session) {
@@ -99,12 +93,14 @@ export async function updateUser(userId, updatedData) {
   }
 }
 
-
 // Function to delete a user
 export async function deleteUser(userId) {
   try {
-    await databases.deleteDocument( appwriteConfig.databaseId,
-      appwriteConfig.userCollectionId, userId.$id);
+    await databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      userId.$id
+    );
   } catch (error) {
     throw new Error(error.message || "Failed to delete user.");
   }
@@ -113,7 +109,17 @@ export async function deleteUser(userId) {
 // Sign In
 export async function signIn(email, password) {
   try {
-    // Create a new email session
+    // Check if a session is already active
+    const activeSession = await account.getSession("current").catch(() => null);
+
+    if (activeSession) {
+      console.log("User is already signed in.");
+      // Optionally, you can return the current account information or handle this as needed
+      const currentAccount = await account.get();
+      return currentAccount;
+    }
+
+    // If no active session, create a new email session
     const session = await account.createEmailPasswordSession(email, password);
     if (session) {
       // Ensure the user has the account scope
@@ -253,7 +259,7 @@ export async function getLatestNews() {
     const response = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.newsCollectionId,
-      ID.unique(),
+      ID.unique()
     );
     return response.documents;
   } catch (error) {
@@ -267,7 +273,7 @@ export async function getServices() {
     const response = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.servicesCollectionId,
-      ID.unique(),
+      ID.unique()
     );
     return response.documents;
   } catch (error) {
@@ -281,7 +287,7 @@ export async function getArchiveItems() {
     const response = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.archivesCollectionId,
-      ID.unique(),
+      ID.unique()
     );
     return response.documents;
   } catch (error) {
@@ -388,7 +394,9 @@ export async function addParticipantToEvent(eventId, participantData) {
     console.log("Participant Data:", participantData);
     console.log("EventId:", eventId);
 
-    let existingParticipant = await getParticipantByStudentId(participantData.studentId);
+    let existingParticipant = await getParticipantByStudentId(
+      participantData.studentId
+    );
 
     // If the participant does not exist, create a new document in the participants collection
     if (!existingParticipant) {
@@ -396,54 +404,54 @@ export async function addParticipantToEvent(eventId, participantData) {
         appwriteConfig.databaseId,
         appwriteConfig.participantCollectionId,
         ID.unique(),
-      {
-        studentId: participantData.studentId,
-        name: participantData.name,
-        sex: participantData.sex,
-        age: parseInt(participantData.age), // Ensure age is an integer
-        school: participantData.school, // Ensure this matches your Appwrite field
-        year: participantData.year,
-        section: participantData.section,
-        ethnicGroup: participantData.ethnicGroup,
-        otherEthnicGroup: participantData.otherEthnicGroup || "", // Handle optional field
-        eventId: eventId, // Associate participant with the event
-      }
+        {
+          studentId: participantData.studentId,
+          name: participantData.name,
+          sex: participantData.sex,
+          age: parseInt(participantData.age), // Ensure age is an integer
+          school: participantData.school, // Ensure this matches your Appwrite field
+          year: participantData.year,
+          section: participantData.section,
+          ethnicGroup: participantData.ethnicGroup,
+          otherEthnicGroup: participantData.otherEthnicGroup || "", // Handle optional field
+          eventId: eventId, // Associate participant with the event
+        }
+      );
+      console.log("New participant added:", existingParticipant);
+    } else {
+      console.log("Existing participant found:", existingParticipant);
+    }
+
+    // Fetch the event document to get its current participants array
+    const eventDocument = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.eventCollectionId,
+      eventId
     );
-    console.log("New participant added:", existingParticipant);
-  } else {
-    console.log("Existing participant found:", existingParticipant);
+
+    console.log("Fetched event document:", eventDocument);
+
+    // Update the event's participants array (make sure participants is an array field in the event collection)
+    const updatedParticipants = [
+      ...(eventDocument.participants || []),
+      existingParticipant.$id, // Add the participant's ID, either new or existing
+    ];
+
+    // Update the event document with the new participants array
+    const updatedEvent = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.eventCollectionId,
+      eventId,
+      { participants: updatedParticipants }
+    );
+
+    console.log("Updated event with new participants:", updatedEvent);
+
+    return updatedEvent; // Return the updated event document
+  } catch (error) {
+    console.error("Error adding participant to event:", error);
+    throw new Error(`Error adding participant to event: ${error.message}`);
   }
-
-  // Fetch the event document to get its current participants array
-  const eventDocument = await databases.getDocument(
-    appwriteConfig.databaseId,
-    appwriteConfig.eventCollectionId,
-    eventId
-  );
-
-  console.log("Fetched event document:", eventDocument);
-
-  // Update the event's participants array (make sure participants is an array field in the event collection)
-  const updatedParticipants = [
-    ...(eventDocument.participants || []),
-    existingParticipant.$id, // Add the participant's ID, either new or existing
-  ];
-
-  // Update the event document with the new participants array
-  const updatedEvent = await databases.updateDocument(
-    appwriteConfig.databaseId,
-    appwriteConfig.eventCollectionId,
-    eventId,
-    { participants: updatedParticipants }
-  );
-
-  console.log("Updated event with new participants:", updatedEvent);
-
-  return updatedEvent; // Return the updated event document
-} catch (error) {
-  console.error("Error adding participant to event:", error);
-  throw new Error(`Error adding participant to event: ${error.message}`);
-}
 }
 
 export async function fetchParticipants(eventId) {
@@ -571,7 +579,6 @@ export async function getParticipantByStudentId(studentId) {
   }
 }
 
-
 export async function checkDocumentExists(documentId) {
   try {
     const document = await databases.getDocument(
@@ -628,12 +635,10 @@ export async function uploadExcelFile(file) {
       file // The file object to upload
     );
 
-    console.log('File uploaded successfully:', response);
+    console.log("File uploaded successfully:", response);
     return response; // Return the response for further use
   } catch (error) {
     console.error("Error uploading file to Appwrite:", error); // Log full error details
     setError(error.message || "Failed to upload the file to Appwrite storage.");
   }
-  
 }
-

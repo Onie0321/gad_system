@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PropTypes from "prop-types";
 import {
   Select,
   SelectContent,
@@ -22,15 +23,15 @@ import {
 import { debounce } from "lodash";
 import { validateStudentId } from "@/utils/StudentIdValidation"; // Import the validation function
 
-export default function AddParticipants({
+function AddParticipants({
   selectedEvent,
   setEvents,
   setSelectedEvent,
   setIsAddingParticipants,
-  newParticipant, // Add this prop
-  setNewParticipant, // Add this prop
-  isAddingParticipants, // Add this prop
-  handleAddParticipant, // Add this prop
+  newParticipant,
+  setNewParticipant,
+  isAddingParticipants,
+  handleAddParticipant,
 }) {
   const [hasAddedFirstParticipant, setHasAddedFirstParticipant] =
     useState(false);
@@ -309,7 +310,7 @@ export default function AddParticipants({
       setIsAddingParticipantsLocal(false); // Disable further additions
 
       // Trigger the callback to fetch the latest events
-      handleParticipantAddition(selectedEvent);
+      // handleParticipantAddition(selectedEvent);
 
       toast.success("Adding Participants Done");
     } else {
@@ -609,3 +610,27 @@ export default function AddParticipants({
     </Card>
   );
 }
+
+// Define PropTypes for the component
+AddParticipants.propTypes = {
+  selectedEvent: PropTypes.object,
+  setEvents: PropTypes.func.isRequired,
+  setSelectedEvent: PropTypes.func.isRequired,
+  setIsAddingParticipants: PropTypes.func.isRequired,
+  newParticipant: PropTypes.shape({
+    studentId: PropTypes.string,
+    name: PropTypes.string,
+    sex: PropTypes.string,
+    age: PropTypes.string,
+    school: PropTypes.string,
+    year: PropTypes.string,
+    section: PropTypes.string,
+    ethnicGroup: PropTypes.string,
+    otherEthnicGroup: PropTypes.string,
+  }).isRequired,
+  setNewParticipant: PropTypes.func.isRequired,
+  isAddingParticipants: PropTypes.bool.isRequired,
+  handleAddParticipant: PropTypes.func.isRequired,
+};
+
+export default AddParticipants;
