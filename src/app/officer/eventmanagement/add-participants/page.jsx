@@ -27,18 +27,11 @@ export default function AddParticipants({
   setEvents,
   setSelectedEvent,
   setIsAddingParticipants,
+  newParticipant, // Add this prop
+  setNewParticipant, // Add this prop
+  isAddingParticipants, // Add this prop
+  handleAddParticipant, // Add this prop
 }) {
-  const [newParticipant, setNewParticipant] = useState({
-    studentId: "",
-    name: "",
-    sex: "",
-    age: "",
-    school: "",
-    year: "",
-    section: "",
-    ethnicGroup: "",
-    otherEthnicGroup: "",
-  });
   const [hasAddedFirstParticipant, setHasAddedFirstParticipant] =
     useState(false);
   const [participantCount, setParticipantCount] = useState(0);
