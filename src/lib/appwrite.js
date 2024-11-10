@@ -5,7 +5,9 @@ import {
   Databases,
   ID,
   Query,
+  Realtime,
   Storage,
+  Permission, Role,
 } from "appwrite";
 
 export const appwriteConfig = {
@@ -20,6 +22,17 @@ export const appwriteConfig = {
     process.env.NEXT_PUBLIC_APPWRITE_RESPONSES_COLLECTION_ID,
   employeesCollectionId:
     process.env.NEXT_PUBLIC_APPWRITE_EMPLOYEES_COLLECTION_ID,
+    exceluploadsCollectionId:
+    process.env.NEXT_PUBLIC_APPWRITE_EXCELUPLOADS_COLLECTION_ID,
+    newsCollectionId:
+    process.env.NEXT_PUBLIC_APPWRITE_NEWS_COLLECTION_ID,
+    messagesCollectionId:
+    process.env.NEXT_PUBLIC_APPWRITE_MESSAGES_COLLECTION_ID,
+    archivesCollectionId:
+    process.env.NEXT_PUBLIC_APPWRITE_ARCHIVES_COLLECTION_ID,
+    servicesCollectionId:
+    process.env.NEXT_PUBLIC_APPWRITE_SERVICES_COLLECTION_ID,
+
 };
 
 const client = new Client();
@@ -31,6 +44,7 @@ client
 const account = new Account(client);
 //const avatars = new Avatars(client);
 export const databases = new Databases(client);
+const storage = new Storage(client);
 
 export async function createUser(email, password, name, role = "admin") {
   try {
@@ -55,6 +69,8 @@ export async function createUser(email, password, name, role = "admin") {
       }
     );
 
+    
+
     // Sign in the new user
     const session = await account.createEmailPasswordSession(email, password);
     if (session) {
@@ -66,6 +82,31 @@ export async function createUser(email, password, name, role = "admin") {
   } catch (error) {
     console.error("Error creating user:", error.message);
     throw new Error("Error creating user");
+  }
+}
+
+export async function updateUser(userId, updatedData) {
+  try {
+    const response = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      userId, // Removed .`$id` since userId should be a string
+      updatedData
+    );
+    return response;
+  } catch (error) {
+    throw new Error(error.message || "Failed to update user.");
+  }
+}
+
+
+// Function to delete a user
+export async function deleteUser(userId) {
+  try {
+    await databases.deleteDocument( appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId, userId.$id);
+  } catch (error) {
+    throw new Error(error.message || "Failed to delete user.");
   }
 }
 
@@ -164,6 +205,87 @@ export async function signOut() {
   } catch (error) {
     console.error("Error signing out:", error.message);
     throw new Error(error);
+  }
+}
+
+export async function getAllUsersFromAuth() {
+  try {
+    console.log("Fetching users from Appwrite Auth...");
+
+    const response = await usersApi.list(); // Fetch users using the Users API
+    console.log("Users fetched successfully from Auth:", response.users);
+    return response.users || []; // Return the users array
+  } catch (error) {
+    console.error("Error fetching users from Appwrite Auth:", error);
+    throw new Error(error.message || "Failed to fetch users from Auth.");
+  }
+}
+
+export async function saveContactMessage({ name, email, message }) {
+  try {
+    // Validate input
+    if (!name || !email || !message) {
+      throw new Error("All fields (name, email, message) are required.");
+    }
+
+    // Create the document in the messages collection
+    const response = await databases.createDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.messagesCollectionId,
+      ID.unique(),
+      { name, email, message },
+      [
+        Permission.read(Role.any()), // Allow public read access (adjust if needed)
+        Permission.create(Role.member()), // Allow members to create
+      ]
+    );
+
+    return response;
+  } catch (error) {
+    console.error("Error saving message:", error.message);
+    throw new Error("Failed to save message: " + error.message);
+  }
+}
+
+// Function to fetch latest news
+export async function getLatestNews() {
+  try {
+    const response = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.newsCollectionId,
+      ID.unique(),
+    );
+    return response.documents;
+  } catch (error) {
+    throw new Error("Failed to fetch news: " + error.message);
+  }
+}
+
+// Function to get services
+export async function getServices() {
+  try {
+    const response = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.servicesCollectionId,
+      ID.unique(),
+    );
+    return response.documents;
+  } catch (error) {
+    throw new Error("Failed to fetch services: " + error.message);
+  }
+}
+
+// Function to get archive items
+export async function getArchiveItems() {
+  try {
+    const response = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.archivesCollectionId,
+      ID.unique(),
+    );
+    return response.documents;
+  } catch (error) {
+    throw new Error("Failed to fetch archive items: " + error.message);
   }
 }
 
@@ -495,3 +617,23 @@ export async function fetchAllParticipants() {
     throw new Error("Error fetching participants");
   }
 }
+
+// Function to upload an Excel file to Appwrite storage
+export async function uploadExcelFile(file) {
+  try {
+    // Upload the file to the specified bucket
+    const response = await storage.createFile(
+      appwriteConfig.exceluploadsCollectionId, // Your bucket ID for exceluploads
+      ID.unique(), // Generate a unique ID for the file
+      file // The file object to upload
+    );
+
+    console.log('File uploaded successfully:', response);
+    return response; // Return the response for further use
+  } catch (error) {
+    console.error("Error uploading file to Appwrite:", error); // Log full error details
+    setError(error.message || "Failed to upload the file to Appwrite storage.");
+  }
+  
+}
+

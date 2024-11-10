@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Bell,
   Layout,
@@ -38,6 +38,9 @@ import {
   CardContent,
   CardTitle,
 } from "../../components/ui/card"; // import Card component
+import { format, formatDistanceToNow } from "date-fns"; // Import date-fns
+import { appwriteConfig, databases } from "../../lib/appwrite"; // Import Appwrite configuration
+
 
 const nav = [
   { icon: Layout, title: "Dashboard", id: "dashboard" },
@@ -51,8 +54,81 @@ const nav = [
 export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [totalEvents, setTotalEvents] = useState(0);
+  const [totalParticipants, setTotalParticipants] = useState(0);
+  const [eventPercentageChange, setEventPercentageChange] = useState(0);
+  const [participantPercentageChange, setParticipantPercentageChange] = useState(0);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  
+ // Fetch data from Appwrite
+ useEffect(() => {
+  const fetchUserData = async () => {
+    try {
+      // Fetch total users
+      const usersResponse = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.userCollectionId
+      );
+      setTotalUsers(usersResponse.total);
+
+      // Fetch total events
+      const eventsResponse = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.eventCollectionId
+      );
+      const currentTotalEvents = eventsResponse.total;
+      setTotalEvents(currentTotalEvents);
+
+      // Fetch total participants
+      const participantsResponse = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.participantCollectionId
+      );
+      const currentTotalParticipants = participantsResponse.total;
+      setTotalParticipants(currentTotalParticipants);
+
+      // Calculate percentage changes
+      const previousTotalEvents = 200; // Example previous count
+      const previousTotalParticipants = 50; // Example previous count
+
+      const eventChange =
+        ((currentTotalEvents - previousTotalEvents) / previousTotalEvents) *
+        100;
+      const participantChange =
+        ((currentTotalParticipants - previousTotalParticipants) /
+          previousTotalParticipants) *
+        100;
+
+      setEventPercentageChange(eventChange.toFixed(1)); // Rounded to one decimal
+      setParticipantPercentageChange(participantChange.toFixed(1)); // Rounded to one decimal
+
+      // Fetch recent activities
+      const activitiesResponse = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.eventCollectionId
+      );
+      const formattedActivities = activitiesResponse.documents.map((activity) => {
+        const date = new Date(activity.eventDate);
+        const formattedDate = format(date, "MMMM d, yyyy h:mm a");
+        const timeAgo = formatDistanceToNow(date, { addSuffix: true });
+
+        return {
+          ...activity,
+          formattedDate: `${formattedDate} (${timeAgo})`,
+        };
+      });
+
+      setRecentActivities(formattedActivities);
+    } catch (error) {
+      console.error("Error fetching data from Appwrite:", error);
+    }
+  };
+
+  fetchUserData();
+}, []);
 
   return (
     <div className="flex h-screen bg-gray-900 text-white">
@@ -167,7 +243,7 @@ export default function AdminDashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold text-white">
-                        10,259
+                      {totalUsers}
                       </div>
                       <p className="text-xs text-blue-300">
                         +2.5% from last month
@@ -177,28 +253,30 @@ export default function AdminDashboard() {
                   <Card className="bg-gray-800 border-green-500 border">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                       <CardTitle className="text-sm font-medium text-green-400">
-                        Active Projects
+                        Event Added
                       </CardTitle>
                       <Layout className="h-4 w-4 text-green-400" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-white">237</div>
+                      <div className="text-2xl font-bold text-white">                        {totalEvents}
+                      </div>
                       <p className="text-xs text-green-300">
-                        +5% from last month
+                      {eventPercentageChange}% from last month
                       </p>
                     </CardContent>
                   </Card>
                   <Card className="bg-gray-800 border-purple-500 border">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                       <CardTitle className="text-sm font-medium text-purple-400">
-                        Data Updates
+                        Participant Added
                       </CardTitle>
                       <FileText className="h-4 w-4 text-purple-400" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-white">52</div>
+                      <div className="text-2xl font-bold text-white">                        {totalParticipants}
+                      </div>
                       <p className="text-xs text-purple-300">
-                        In the last 7 days
+                      {participantPercentageChange}% from last month
                       </p>
                     </CardContent>
                   </Card>
@@ -206,45 +284,20 @@ export default function AdminDashboard() {
 
                 <Card className="bg-gray-800 border border-blue-500">
                   <CardHeader>
-                    <CardTitle className="text-blue-400">
-                      Recent Activities
-                    </CardTitle>
+                    <CardTitle className="text-blue-400">Recent Activities</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {[
-                        {
-                          icon: Users,
-                          color: "bg-blue-500",
-                          title: "New user registered",
-                          time: "2 hours ago",
-                        },
-                        {
-                          icon: FileText,
-                          color: "bg-green-500",
-                          title: "New report uploaded",
-                          time: "4 hours ago",
-                        },
-                        {
-                          icon: Edit,
-                          color: "bg-yellow-500",
-                          title: "Content updated",
-                          time: "1 day ago",
-                        },
-                      ].map((activity, index) => (
+                      {recentActivities.map((activity, index) => (
                         <div key={index} className="flex items-center">
-                          <span
-                            className={`rounded-full ${activity.color} p-2`}
-                          >
-                            <activity.icon className="h-4 w-4 text-white" />
+                          <span className="rounded-full bg-blue-500 p-2">
+                            <Users className="h-4 w-4 text-white" />
                           </span>
                           <div className="ml-4">
                             <p className="text-sm font-medium text-gray-200">
-                              {activity.title}
+                              {activity.eventName} {/* Adjust to match your data structure */}
                             </p>
-                            <p className="text-sm text-gray-400">
-                              {activity.time}
-                            </p>
+                            <p className="text-sm text-gray-400">{activity.eventDate}</p>
                           </div>
                         </div>
                       ))}

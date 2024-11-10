@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   UserCircle,
   Search,
@@ -48,8 +48,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
-import { getAllUsers } from "../../../lib/appwrite";
-import { useCallback } from "react";
+import { getCurrentUser, getAllUsers  } from "@/lib/appwrite";
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -61,52 +60,90 @@ export default function UserManagement() {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const { toast } = useToast();
 
-  const fetchUsers = useCallback(async () => {
+  // Function to fetch the current user
+  const fetchUser = async () => {
     setLoading(true);
-    setError(null);
     try {
-      const data = await getAllUsers();
-      setUsers(data);
-    } catch (err) {
-      console.error("Error fetching users:", err);
-      setError(err.message);
-      toast({
-        title: "Error",
-        description: `Failed to fetch users: ${err.message}`,
-        variant: "destructive",
-      });
+      const fetchedUser = await getCurrentUser();
+      setUser(fetchedUser);
+    } catch (error) {
+      setError(error.message || "Failed to fetch user.");
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  };
 
+  // Function to fetch all users
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const fetchedUsers = await getAllUsers(); // Use your method to fetch all users
+      setUsers(fetchedUsers);
+    } catch (error) {
+      setError(error.message || "Failed to fetch users.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch the user and users on component mount
   useEffect(() => {
+    fetchUser();
     fetchUsers();
-  }, [fetchUsers]);
+  }, []);
 
-  const handleRetry = () => {
-    fetchUsers();
+  // Add new user
+  const handleAddUser = async (name, email, role) => {
+    try {
+      await createUser(name, email, role);
+      toast({ title: "User added successfully" });
+      fetchUsers();
+    } catch (error) {
+      toast({ title: "Error adding user", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Update user role
+  const handleUpdateUserRole = async (userId, newRole) => {
+    try {
+      await updateUser(userId, { role: newRole });
+      toast({ title: "User role updated successfully" });
+      fetchUsers();
+    } catch (error) {
+      toast({ title: "Error updating user role", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Delete user
+  const handleDeleteUser = async (userId) => {
+    try {
+      await deleteUser(userId);
+      toast({ title: "User deleted successfully" });
+      fetchUsers();
+    } catch (error) {
+      toast({ title: "Error deleting user", description: error.message, variant: "destructive" });
+    }
   };
 
   const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (roleFilter === "all" || roleFilter === "" || user.role === roleFilter) &&
-      (statusFilter === "all" ||
-        statusFilter === "" ||
-        user.status === statusFilter)
+      (roleFilter === "all" || user.role === roleFilter) &&
+      (statusFilter === "all" || user.status === statusFilter)
   );
 
   const handleUserSelection = (userId) => {
     setSelectedUsers((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
   };
 
   const handleBulkAction = async (action) => {
-    console.log(`Bulk ${action} for users:`, selectedUsers);
+    if (action === "delete") {
+      selectedUsers.forEach(handleDeleteUser);
+    } else if (action === "changeRole") {
+      selectedUsers.forEach((id) => handleUpdateUserRole(id, "user"));
+    }
   };
 
   return (
@@ -126,7 +163,9 @@ export default function UserManagement() {
         <div className="flex space-x-2">
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white">
+              <Button className="bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white"
+              onClick={() => handleAddUser("New User", "newuser@ascotedu.ph ", "user")}
+>
                 <UserPlus2 className="h-4 w-4 mr-2" />
                 Add New User
               </Button>
@@ -267,7 +306,7 @@ export default function UserManagement() {
                 <Checkbox
                   onCheckedChange={(checked) => {
                     if (checked) {
-                      setSelectedUsers(users.map((user) => user.id));
+                      setSelectedUsers(users.map((user) => user.$id));
                     } else {
                       setSelectedUsers([]);
                     }
@@ -283,11 +322,11 @@ export default function UserManagement() {
           </TableHeader>
           <TableBody>
             {filteredUsers.map((user) => (
-              <TableRow key={user.id} className="border-b border-gray-700">
+              <TableRow key={user.$id} className="border-b border-gray-700">
                 <TableCell>
                   <Checkbox
-                    checked={selectedUsers.includes(user.id)}
-                    onCheckedChange={() => handleUserSelection(user.id)}
+                    checked={selectedUsers.includes(user.$id)}
+                    onCheckedChange={() => handleUserSelection(user.$id)}
                   />
                 </TableCell>
                 <TableCell className="text-white">{user.name}</TableCell>
@@ -302,18 +341,14 @@ export default function UserManagement() {
                     >
                       <FileText className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="bg-gray-700 text-blue-400 border-blue-500 hover:bg-blue-600 hover:text-white"
-                    >
+                    <div className="flex space-x-2">
+                    <Button variant="outline" className="bg-gray-700 text-blue-400 border-blue-500 hover:bg-blue-600 hover:text-white" onClick={() => handleUpdateUserRole(user.$id, "admin")}>
                       <Settings className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="bg-gray-700 text-red-400 border-red-400 hover:bg-red-600 hover:text-white"
-                    >
+                    <Button variant="outline" className="bg-gray-700 text-red-400 border-red-400 hover:bg-red-600 hover:text-white" onClick={() => handleDeleteUser(user.$id)}>
                       <Trash className="h-4 w-4" />
                     </Button>
+                  </div>
                   </div>
                 </TableCell>
               </TableRow>

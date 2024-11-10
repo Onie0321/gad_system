@@ -51,12 +51,13 @@ export default function AddParticipantDialog({
   const [newlyAddedFemale, setNewlyAddedFemale] = useState(0);
 
   useEffect(() => {
-    if (event && event.participants) {
-      setParticipantCount(event.participants.length);
-      setMaleCount(event.participants.filter((p) => p.sex === "Male").length);
-      setFemaleCount(
-        event.participants.filter((p) => p.sex === "Female").length
-      );
+    if (event) {
+      setParticipantCount(event.participants?.length || 0);
+      setMaleCount(event.participants?.filter((p) => p.sex === "Male").length || 0);
+      setFemaleCount(event.participants?.filter((p) => p.sex === "Female").length || 0);
+      setNewlyAddedMale(0); // Reset newly added counts
+      setNewlyAddedFemale(0);
+      setIsAdded(false); // Reset the "isAdded" state when a new event is selected
     }
   }, [event]);
 

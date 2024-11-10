@@ -137,10 +137,12 @@ export default function EventManagement() {
 
         <AddParticipants
           selectedEvent={selectedEvent}
+          newParticipant={newParticipant}
+          setNewParticipant={setNewParticipant}
           isAddingParticipants={isAddingParticipants}
           handleAddParticipant={handleAddParticipant}
           setEvents={setEvents}
-          setIsAddingParticipants={setIsAddingParticipants}
+          setIsAddingParticipants={setIsAddingParticipants} // Pass this prop
         />
       </div>
       <div className="mt-8 space-y-8">

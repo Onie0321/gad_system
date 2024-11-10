@@ -35,6 +35,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../components/ui/dialog";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css"; // Import toastify CSS
+import { saveContactMessage, getLatestNews, getServices, getArchiveItems } from "@/lib/appwrite";
 
 export default function ScrollableLandingPage() {
   const router = useRouter();
@@ -48,6 +51,29 @@ export default function ScrollableLandingPage() {
   const [searchCategory, setSearchCategory] = useState("all");
   const [showResults, setShowResults] = useState(false);
 
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [message, setMessage] = useState("");
+    const [loading, setLoading] = useState(false);
+    
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      
+  
+      try {
+        await saveContactMessage({ name, email, message });
+        toast.success("Message sent successfully!");
+        setName("");
+        setEmail("");
+        setMessage("");
+      } catch (error) {
+        toast.error("Failed to send message. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
   const handleSearch = (e) => {
     e.preventDefault();
     // Implement search logic here
@@ -59,6 +85,8 @@ export default function ScrollableLandingPage() {
       searchCategory
     );
   };
+
+  
 
   useEffect(() => {
     const handleScroll = () => {
@@ -736,27 +764,30 @@ export default function ScrollableLandingPage() {
                 transition={{ duration: 0.5 }}
                 viewport={{ once: true }}
               >
-                <form className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <Input
                     type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     placeholder="Your Name"
-                    className="bg-white bg-opacity-20 text-white placeholder-white"
+                    required
                   />
                   <Input
                     type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="Your Email"
-                    className="bg-white bg-opacity-20 text-white placeholder-white"
+                    required
                   />
                   <Textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
                     placeholder="Your Message"
                     rows={4}
-                    className="bg-white bg-opacity-20 text-white placeholder-white"
+                    required
                   />
-                  <Button
-                    type="submit"
-                    className="w-full bg-white text-orange-600 hover:bg-orange-100"
-                  >
-                    Send Message
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "Sending..." : "Send Message"}
                   </Button>
                 </form>
               </motion.div>
